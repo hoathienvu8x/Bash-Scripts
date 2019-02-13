@@ -1,6 +1,8 @@
 #!/bin/bash
 
-repo="`pwd`/Crypto-Exchange-Matching-Engine"
+reponame="${1:-Crypto-Exchange-Matching-Engine}"
+
+repo="`pwd`/$reponame"
 
 echo "Remove old repository \"$repo\""
 
@@ -44,12 +46,21 @@ for file in `find $repo -name '*.h'`;
 do
     sed -i -e "s/trader\/matching\//matching\//g" $file
     sed -i -e "s/trader\/providers\//providers\//g" $file
+    sed -i -e "s/std::max_align_t/max_align_t/g" $file
 done
 
 for file in `find $repo -name '*.cpp'`;
 do
     sed -i -e "s/trader\/matching\//matching\//g" $file
     sed -i -e "s/trader\/providers\//providers\//g" $file
+    sed -i -e "s/std::max_align_t/max_align_t/g" $file
+done
+
+for file in `find $repo -name '*.inl'`;
+do
+    sed -i -e "s/trader\/matching\//matching\//g" $file
+    sed -i -e "s/trader\/providers\//providers\//g" $file
+    sed -i -e "s/std::max_align_t/max_align_t/g" $file
 done
 
 echo "Clone \"jemalloc\" and \"libevent\" from git repositories"
