@@ -73,6 +73,19 @@ git clone https://github.com/jemalloc/jemalloc.git
 
 echo "General \"Makefile to build project\""
 
+cat > $repo/fixed.md << EOF
+Fixed max_align_t error
+```
+// https://ceres-solver-review.googlesource.com/c/ceres-solver/+/9100/1/include/ceres/internal/port.h#b57
+#ifdef CERES_USE_CXX11
+    #if defined (__GNUC__) && __GNUC__ == 4 && __GNUC_MINOR__ == 8
+        using ::max_align_t
+    #else
+        using std::max_align_t
+    #endif
+#endif
+EOF
+
 cat > $repo/Makefile << EOF
 # https://gist.github.com/Wenchy/64db1636845a3da0c4c7
 PROJECT_DIR := \$(shell pwd)
