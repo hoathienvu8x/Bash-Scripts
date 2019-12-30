@@ -40,6 +40,17 @@ else
     cd /tmp
 fi
 
+if [ ! -d "fmt/.git" ];
+then
+    echo "Clone \"fmt\" repository from github"
+    git clone https://github.com/fmtlib/fmt
+else
+    cd fmt
+    echo "Pull master from \"fmt\" repository"
+    git pull origin master
+    cd /tmp
+fi
+
 echo "Copy all header + source to repository \"$repo\""
 
 cp -rf CppTrader/include/trader/* $repo/include/
@@ -51,6 +62,15 @@ cp -rf CppTrader/examples/matching_engine.cpp $repo/
 cp -rf CppCommon/include/* $repo/include/
 
 cp -rf CppCommon/source/* $repo/source/
+
+cp -rf fmt/include/* $repo/include/
+
+if [ ! -d "$repo/source/fmt" ];
+then
+    mkdir -p $repo/source/fmt
+fi
+
+cp -rf fmt/src/* $repo/source/fmt/
 
 echo "Change include libs in source and header file"
 
@@ -77,7 +97,7 @@ done
 
 echo "CC = g++" > $repo/Makefile
 echo "PROJECT_DIR = \$(shell pwd)" >> $repo/Makefile
-echo "CFLAGS = -std=c++11 -Wall -g -I\$(PROJECT_DIR)/include" >> $repo/Makefile
+echo "CFLAGS = -std=c++17 -Wall -g -I\$(PROJECT_DIR)/include" >> $repo/Makefile
 echo "TARGET = matching-engine" >> $repo/Makefile
 i=0
 srcs=($(find $repo -name '*.cpp'))
@@ -107,7 +127,7 @@ echo "\$(TARGET): \$(OBJS)" >> $repo/Makefile
 echo -e "\t\$(CC) -o \$@ \$^" >> $repo/Makefile
 echo "" >> $repo/Makefile
 echo "%.o: %.cpp" >> $repo/Makefile
-echo -e "\t\$(CC) \$(CFLAGS) -c \$<" >> $repo/Makefile
+echo -e "\t\$(CC) \$(CFLAGS) -c \$< -o \$@" >> $repo/Makefile
 echo "" >> $repo/Makefile
 echo "clean:" >> $repo/Makefile
 echo -e "\trm -rf \$(TARGET) *.o" >> $repo/Makefile
