@@ -103,7 +103,7 @@ done
 
 echo "CC = g++" > $repo/Makefile
 echo "PROJECT_DIR = \$(shell pwd)" >> $repo/Makefile
-echo "CFLAGS = -std=c++17 -Wall -pthread -ldl -g -I\$(PROJECT_DIR)/include" >> $repo/Makefile
+echo "CFLAGS = -std=c++17 -Wall -pthread -ldl -lrt -luuid -lbfd -g -I\$(PROJECT_DIR)/include" >> $repo/Makefile
 echo "TARGET = matching-engine" >> $repo/Makefile
 i=0
 srcs=($(find $repo -name '*.cpp'))
