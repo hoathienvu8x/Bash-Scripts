@@ -136,6 +136,6 @@ echo "%.o: %.cpp" >> $repo/Makefile
 echo -e "\t\$(CC) \$(CFLAGS) -c \$< -o \$@" >> $repo/Makefile
 echo "" >> $repo/Makefile
 echo "clean:" >> $repo/Makefile
-echo -e "\trm -rf \$(TARGET) *.o" >> $repo/Makefile
+echo -e "\trm -rf \$(TARGET) \$(OBJS)" >> $repo/Makefile
 echo "" >> $repo/Makefile
 echo ".PHONY: all clean" >> $repo/Makefile
