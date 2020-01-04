@@ -70,7 +70,13 @@ then
     mkdir -p $repo/source/fmt
 fi
 
-cp -rf fmt/src/* $repo/source/fmt/
+# cp -rf fmt/src/* $repo/source/fmt/
+
+for f in `find fmt/src/ -name '*.cc'`;
+do
+    newfile="$(basename $f .cc).cpp"
+    cp -rf $f $repo/source/fmt/$newfile
+done
 
 echo "Change include libs in source and header file"
 
@@ -97,7 +103,7 @@ done
 
 echo "CC = g++" > $repo/Makefile
 echo "PROJECT_DIR = \$(shell pwd)" >> $repo/Makefile
-echo "CFLAGS = -std=c++17 -Wall -g -I\$(PROJECT_DIR)/include" >> $repo/Makefile
+echo "CFLAGS = -std=c++17 -Wall -pthread -ldl -g -I\$(PROJECT_DIR)/include" >> $repo/Makefile
 echo "TARGET = matching-engine" >> $repo/Makefile
 i=0
 srcs=($(find $repo -name '*.cpp'))
