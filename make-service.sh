@@ -49,3 +49,6 @@ std::string json_encode(JSONresource src) {
     return src.as_str(true, true);
 }
 EOF
+
+cd $WORKDIR/service
+g++ -std=c++11 -Wall service.cpp -o service
