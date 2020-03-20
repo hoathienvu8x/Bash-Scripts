@@ -38,12 +38,12 @@ sed -i 's/RSJ/JSON/g' $WORKDIR/service/include/json.h
 #sed -i 's/int\*/size_t*/g' $WORKDIR/service/include/json.h
 #sed -i 's/new int/new size_t/g' $WORKDIR/service/include/json.h
 #sed -i 's/size_t  JSONresource::as<int>/int JSONresource::as<int>/g' $WORKDIR/service/include/json.h
-sed -i 's/int b=0/size_t b=0/g' $WORKDIR/service/include/json.h
-sed -i 's/int a=0/size_t a=0/g' $WORKDIR/service/include/json.h
-sed -i 's/int newline_pos =/size_t newline_pos =/g' $WORKDIR/service/include/json.h
-sed -i 's/int\* parse_start_str_pos/size_t* parse_start_str_pos/g' $WORKDIR/service/include/json.h
-sed -i 's/parse_start_str_pos = new int;/parse_start_str_pos = new size_t;/g' $WORKDIR/service/include/json.h
-sed -i 's/operator\[\] (int indx)/operator[] (size_t indx)/g' $WORKDIR/service/include/json.h
+#sed -i 's/int b=0/size_t b=0/g' $WORKDIR/service/include/json.h
+#sed -i 's/int a=0/size_t a=0/g' $WORKDIR/service/include/json.h
+#sed -i 's/int newline_pos =/size_t newline_pos =/g' $WORKDIR/service/include/json.h
+#sed -i 's/int\* parse_start_str_pos/size_t* parse_start_str_pos/g' $WORKDIR/service/include/json.h
+#sed -i 's/parse_start_str_pos = new int;/parse_start_str_pos = new size_t;/g' $WORKDIR/service/include/json.h
+#sed -i 's/operator\[\] (int indx)/operator[] (size_t indx)/g' $WORKDIR/service/include/json.h
 
 cat > $WORKDIR/service/service.cpp <<EOF
 #include <iostream>
@@ -64,6 +64,18 @@ int main(int argc, char **argv) {
             res.set_content(json_encode(*data), "text/plain");
         } else {
             res.set_content("{}", "text/plain");
+        }
+    });
+    svr.Get(R"(/user/(\d+))", [&](const Request& req, Response& res) {
+        auto uid = req.matches[1];
+        res.set_content(uid, "text/plain");
+    });
+    svr.Get("/users", [](const Request& req, Response& res) {
+        if (req.has_param("page")) {
+            auto val = req.get_param_value("page");
+            res.set_content(val, "text/plain");
+        } else {
+            res.set_content(req.body, "text/plain");
         }
     });
     svr.listen("127.0.0.1", 9600);
