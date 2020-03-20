@@ -74,7 +74,7 @@ JSONresource *json_decode(std::string str) {
     return new JSONresource(str);
 }
 std::string json_encode(JSONresource src) {
-    return src.as_str(true, true);
+    return src.as_str(false, false);
 }
 EOF
 
