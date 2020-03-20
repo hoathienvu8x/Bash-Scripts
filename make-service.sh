@@ -39,6 +39,12 @@ JSONresource *json_decode(std::string);
 std::string json_encode(JSONresource);
 
 int main(int argc, char **argv) {
+    JSONresource *data = json_decode("{'RSJ': 'string data', 'keyName': [2,3,5,7]}");
+    if (data != NULL) {
+        std::cout << json_encode(*data) << std::endl;
+    } else {
+        std::cout << "Error parse JSON" << std::endl;
+    }
     return 0;
 }
 
@@ -52,3 +58,4 @@ EOF
 
 cd $WORKDIR/service
 g++ -std=c++11 -Wall service.cpp -o service
+./service
