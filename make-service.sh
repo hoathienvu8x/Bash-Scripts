@@ -45,18 +45,64 @@ sed -i 's/RSJ/JSON/g' $WORKDIR/service/include/json.h
 #sed -i 's/parse_start_str_pos = new int;/parse_start_str_pos = new size_t;/g' $WORKDIR/service/include/json.h
 #sed -i 's/operator\[\] (int indx)/operator[] (size_t indx)/g' $WORKDIR/service/include/json.h
 
-cat > $WORKDIR/service/service.cpp <<EOF
+if [ ! -d "$WORKDIR/sqlite-amalgamation-3310100" ] || [ ! -f "$WORKDIR/sqlite-amalgamation-3310100/sqlite3.h" ] || [ ! -f "$WORKDIR/sqlite-amalgamation-3310100/sqlite3.c" ]
+then
+    wget https://www.sqlite.org/2020/sqlite-amalgamation-3310100.zip -O $WORKDIR/sqlite-amalgamation-3310100.zip
+    cd $WORKDIR
+    unzip sqlite-amalgamation-3310100.zip
+    rm -rf $WORKDIR/sqlite-amalgamation-3310100.zip
+fi
+mkdir -p $WORKDIR/service/source
+
+cat $WORKDIR/sqlite-amalgamation-3310100/sqlite3.h > $WORKDIR/service/include/sqlite3.h
+cat $WORKDIR/sqlite-amalgamation-3310100/sqlite3.c > $WORKDIR/service/source/sqlite3.c
+
+cat > $WORKDIR/service/source/service.cpp <<EOF
 #include <iostream>
 #include <string>
 #include <httplib.h>
+#include <unistd.h>
 #include <json.h>
+#include <sqlite3.h>
 
-using namespace httplib;
+using httplib::Server;
+using httplib::Request;
+using httplib::Response;
+using jsonlib::JSONresource;
+sqlite3 *db;
+char * current_path, *dbFile;
 
 JSONresource *json_decode(std::string);
 std::string json_encode(JSONresource);
+char *get_current_dir();
 
 int main(int argc, char **argv) {
+    current_path = get_current_dir();
+    char mdb[PATH_MAX];
+    sprintf(mdb, "%s/database.db", current_path);
+    size_t len = strlen(mdb);
+    if (len == (unsigned)-1) {
+        len = 0;
+    }
+    mdb[len] = '\0';
+    dbFile = strdup(mdb);
+    
+    /* Init database */
+    int rc;
+    rc = sqlite3_open(dbFile, &db);
+    if( rc != SQLITE_OK ){
+        printf("Error connect sqlite database: %s\n",sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return 1;
+    }
+    char *zErrMsg = 0;
+    const char *sql = "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY AUTOINCREMENT, user_fullname TEXT NOT NULL, user_email TEXT NOT NULL, user_password TEXT NOT NULL, user_status INTEGER NOT NULL DEFAULT 0)";
+    rc = sqlite3_exec(db, sql, NULL, 0, &zErrMsg);
+    if ( rc != SQLITE_OK ) {
+        printf("Error create table: %s\n", zErrMsg);
+        sqlite3_close(db);
+        return 1;
+    }
     Server svr;
     svr.Get("/", [](const Request& req, Response& res) {
 	JSONresource *data = json_decode("{'RSJ': 'string data', 'keyName': [2,3,5,7]}");
@@ -83,26 +129,46 @@ int main(int argc, char **argv) {
 }
 
 JSONresource *json_decode(std::string str) {
-    return new JSONresource(str);
+    return new jsonlib::JSONresource(str);
 }
 std::string json_encode(JSONresource src) {
     return src.as_str(false, true, false);
 }
+char *get_current_dir() {
+    char exePath[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath));
+    if (len == -1 || len == sizeof(exePath)) {
+        len = 0;
+    }
+    while(len > 0) {
+        if (exePath[len] == '/') {
+            break;
+        }
+        len--;
+    }
+    exePath[len] = '\0';
+    return strdup(exePath);
+}
 EOF
 
 cat > $WORKDIR/service/Makefile <<EOF
-CC = g++
-CFLAGS = -Wall -Werror -O3 -std=c++11
+CX = g++
+CXX = gcc
+LDFLAGS = -Wall -Werror -O3
+CFLAGS = -std=c++11
 INCDIR = \$(shell pwd)/include
 INCLUDES = -I./ -I/usr/local/include -I\$(INCDIR) -lpthread -ldl
 
-%.o: %.cpp
-	\$(CC) \$(CFLAGS) -c \$< \$(INCLUDES) -o \$@
-
-OBJECTS = service.o
+OBJECTS = source/service.o source/sqlite3.o
 
 all: \$(OBJECTS)
-	\$(CC) \$(CFLAGS) \$(OBJECTS) -o service \$(INCLUDES)
+	\$(CX) \$(LDFLAGS) \$(CFLAGS) \$(OBJECTS) -o service \$(INCLUDES)
+
+%.o: %.cpp
+	\$(CX) \$(LDFLAGS) \$(CFLAGS) -c \$< \$(INCLUDES) -o \$@
+
+source/sqlite3.o: source/sqlite3.c
+	\$(CXX) \$(LDFLAGS) -c \$< \$(INCLUDES) -o \$@
 
 .PHONY: all clean
 
