@@ -1,0 +1,25 @@
+#!/bin/bash
+
+video="${1:-}"
+audio="${2:-}"
+
+if [ "$video" == "" ]
+then
+    echo "Missing video file"
+    exit
+fi
+
+if [ "$audio" == "" ]
+then
+    echo "Missing audio file"
+    exit
+fi
+
+output=$(basename $video ".mp4")
+
+echo "$video $audio $output.mp4"
+
+ffmpeg -i $audio -vn -acodec copy a.aac
+ffmpeg -i $video -i a.aac -c:v copy -c:a aac -strict experimental $output.mp4
+
+rm -rf a.acc
