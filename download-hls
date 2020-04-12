@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if [ ! -f "/tmp/index.m3u8" ]
+then
+	echo "NO file"
+	exit
+fi
+
+url="${1:-}"
+
+cd /tmp
+
+rm -rf /tmp/mylist.txt
+
+for u in `cat /tmp/index.m3u8 | grep '.ts'`
+do
+	n=$(basename $u)
+	echo "Downloading $n ..."
+	echo "$n" >> /tmp/mylist.txt
+	wget -q $url/$u -O $n
+done
+
+cat $(cat /tmp/mylist.txt) > /tmp/all.ts
+
+ffmpeg -i /tmp/all.ts -acodec copy -vcodec copy /tmp/all.mp4
+
+rm -rf /tmp/*.ts /tmp/*.ts.1
+
+echo "Done "
+exit
