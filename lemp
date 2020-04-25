@@ -1,0 +1,464 @@
+#!/bin/bash
+script_root="https://raw.githubusercontent.com/hoathienvu8x/Bash-Scripts/master/mariadb"
+mariadb_version="10.4"
+server_name="hoathienvu8x.io"
+admin_port="9600"
+low_ram='262144' # 256MB
+
+yum -y install gawk bc wget lsof
+
+server_ram_total=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+
+if [ $server_ram_total -lt $low_ram ]; then
+    echo -e "Warning: RAM low \n (least 256MB) \n"
+	echo "cancel install..."
+	exit
+fi
+
+server_ip=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
+
+echo "IP: $server_ip"
+
+rm -f /etc/localtime
+ln -sf /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
+
+if [ -s /etc/selinux/config ]; then
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+sed -i 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
+fi
+setenforce 0
+
+# Install EPEL + Remi Repo
+yum -y install epel-release yum-utils
+rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
+
+# Install Nginx Repo
+rpm -Uvh http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
+
+# Install MariaDB Repo 10.4
+cat > /etc/yum.repos.d/MariaDB.repo <<EOF
+# MariaDB $mariadb_version CentOS repository list - created `date +"%F %R"` UTC
+# http://downloads.mariadb.org/mariadb/repositories/
+[mariadb]
+name = MariaDB
+baseurl = http://yum.mariadb.org/$mariadb_version/centos7-amd64
+gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+gpgcheck=1
+EOF
+
+systemctl stop saslauthd
+systemctl disable saslauthd
+
+# Disable the FirewallD Service and use Iptables instead because FirewallD need reboot in order to start
+systemctl stop firewalld
+systemctl disable firewalld
+systemctl mask firewalld
+
+yum -y remove mysql* php* httpd* sendmail* postfix* rsyslog*
+yum clean all
+yum -y update
+
+# Enable Remi Repo
+yum-config-manager --enable remi
+
+yum -y install nginx
+yum -y install MariaDB-server MariaDB-client
+yum -y install exim syslog-ng syslog-ng-libdbi cronie fail2ban unzip zip nano openssl ntpdate iptables-services
+
+ntpdate asia.pool.ntp.org
+hwclock --systohc
+
+systemctl enable nginx
+systemctl enable mariadb
+systemctl enable fail2ban
+systemctl enable iptables
+systemctl enable ip6tables
+
+mkdir -p /var/log/nginx
+chown -R nginx:nginx /var/log/nginx
+
+mkdir -p /home/$server_name/public_html
+mkdir /home/$server_name/private_html
+mkdir /home/$server_name/logs
+chmod 777 /home/$server_name/logs
+
+# Nginx #
+cat > "/etc/nginx/nginx.conf" <<END
+user nginx;
+worker_processes auto;
+worker_rlimit_nofile 260000;
+
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+
+events {
+    worker_connections  2048;
+    accept_mutex off;
+    accept_mutex_delay 200ms;
+    use epoll;
+    #multi_accept on;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    charset utf-8;
+
+    log_format  main  '\$remote_addr - \$remote_user [\$time_local] "\$request" '
+          '\$status \$body_bytes_sent "\$http_referer" '
+          '"\$http_user_agent" "\$http_x_forwarded_for"';
+
+    #Disable IFRAME
+    add_header X-Frame-Options SAMEORIGIN;
+
+    #Prevent Cross-site scripting (XSS) attacks
+    add_header X-XSS-Protection "1; mode=block";
+
+    #Prevent MIME-sniffing
+    add_header X-Content-Type-Options nosniff;
+
+    access_log  off;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay off;
+    types_hash_max_size 2048;
+    server_tokens off;
+    server_names_hash_bucket_size 128;
+    client_max_body_size 0;
+    client_body_buffer_size 256k;
+    client_body_in_file_only off;
+    client_body_timeout 60s;
+    client_header_buffer_size 256k;
+    client_header_timeout  20s;
+    large_client_header_buffers 8 256k;
+    keepalive_timeout 10;
+    keepalive_disable msie6;
+    reset_timedout_connection on;
+    send_timeout 60s;
+
+    gzip on;
+    gzip_static on;
+    gzip_disable "msie6";
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_types text/plain text/css application/json text/javascript application/javascript text/xml application/xml application/xml+rss;
+
+    include /etc/nginx/conf.d/*.conf;
+}
+END
+
+cat > "/usr/share/nginx/html/403.html" <<END
+<html>
+<head><title>403 Forbidden</title></head>
+<body bgcolor="white">
+<center><h1>403 Forbidden</h1></center>
+<hr><center>hocvps-nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+END
+
+cat > "/usr/share/nginx/html/404.html" <<END
+<html>
+<head><title>404 Not Found</title></head>
+<body bgcolor="white">
+<center><h1>404 Not Found</h1></center>
+<hr><center>hocvps-nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+END
+
+rm -rf /etc/nginx/conf.d/*
+> /etc/nginx/conf.d/default.conf
+
+cat > "/etc/nginx/conf.d/$server_name.conf" <<END
+server {
+    listen 80;
+    server_name www.$server_name;
+    rewrite ^(.*) http://$server_name\$1 permanent;
+}
+server {
+    listen 80 default_server;
+    # access_log off;
+    access_log /home/$server_name/logs/access.log;
+    # error_log off;
+    error_log /home/$server_name/logs/error.log;
+	
+    root /home/$server_name/public_html;
+    index index.html index.htm;
+    server_name $server_name;
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+
+    # Custom configuration
+    include /home/$server_name/public_html/*.conf;
+    location /nginx_status {
+        stub_status on;
+        access_log   off;
+        allow 127.0.0.1;
+        allow $server_ip;
+        deny all;
+    }
+    # Disable .htaccess and other hidden files
+    location ~ /\.(?!well-known).* {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    location = /favicon.ico {
+        log_not_found off;
+        access_log off;
+    }
+
+    location = /robots.txt {
+        allow all;
+        log_not_found off;
+        access_log off;
+    }
+
+    location ~* \.(3gp|gif|jpg|jpeg|png|ico|wmv|avi|asf|asx|mpg|mpeg|mp4|pls|mp3|mid|wav|swf|flv|exe|zip|tar|rar|gz|tgz|bz2|uha|7z|doc|docx|xls|xlsx|pdf|iso|eot|svg|ttf|woff)$ {
+        gzip_static off;
+        add_header Pragma public;
+        add_header Cache-Control "public, must-revalidate, proxy-revalidate";
+        access_log off;
+        expires 30d;
+        break;
+    }
+
+    location ~* \.(txt|js|css)$ {
+        add_header Pragma public;
+        add_header Cache-Control "public, must-revalidate, proxy-revalidate";
+        access_log off;
+        expires 30d;
+        break;
+    }
+}
+END
+
+cat >> "/etc/security/limits.conf" <<END
+* soft nofile 262144
+* hard nofile 262144
+nginx soft nofile 262144
+nginx hard nofile 262144
+nobody soft nofile 262144
+nobody hard nofile 262144
+root soft nofile 262144
+root hard nofile 262144
+END
+
+ulimit -n 262144
+
+systemctl start nginx
+systemctl start mariadb
+systemctl start iptables
+systemctl start ip6tables
+
+cp /etc/my.cnf /etc/my.cnf-original
+
+if [[ "$(expr $server_ram_total \<= 2099000)" = "1" ]]; then
+	# echo -e "\nCopying MariaDB my-mdb10-min.cnf file to /etc/my.cnf\n"
+	wget -q $script_root/my-mdb10-min.cnf -O /etc/my.cnf
+fi
+
+if [[ "$(expr $server_ram_total \> 2100001)" = "1" && "$(expr $server_ram_total \<= 4190000)" = "1" ]]; then
+	# echo -e "\nCopying MariaDB my-mdb10.cnf file to /etc/my.cnf\n"
+	wget -q $script_root/my-mdb10.cnf -O /etc/my.cnf
+fi
+
+if [[ "$(expr $server_ram_total \>= 4190001)" = "1" && "$(expr $server_ram_total \<= 8199999)" = "1" ]]; then
+	# echo -e "\nCopying MariaDB my-mdb10-4gb.cnf file to /etc/my.cnf\n"
+	wget -q $script_root/my-mdb10-4gb.cnf -O /etc/my.cnf
+fi
+
+if [[ "$(expr $server_ram_total \>= 8200000)" = "1" && "$(expr $server_ram_total \<= 15999999)" = "1" ]]; then
+	# echo -e "\nCopying MariaDB my-mdb10-8gb.cnf file to /etc/my.cnf\n"
+	wget -q $script_root/my-mdb10-8gb.cnf -O /etc/my.cnf
+fi
+
+if [[ "$(expr $server_ram_total \>= 16000000)" = "1" && "$(expr $server_ram_total \<= 31999999)" = "1" ]]; then
+	# echo -e "\nCopying MariaDB my-mdb10-16gb.cnf file to /etc/my.cnf\n"
+	wget -q $script_root/my-mdb10-16gb.cnf -O /etc/my.cnf
+fi
+
+if [[ "$(expr $server_ram_total \>= 32000000)" = "1" ]]; then
+	# echo -e "\nCopying MariaDB my-mdb10-32gb.cnf file to /etc/my.cnf\n"
+	wget -q $script_root/my-mdb10-32gb.cnf -O /etc/my.cnf
+fi
+
+sed -i "s/server_name_here/$server_name/g" /etc/my.cnf
+
+rm -f /var/lib/mysql/ib_logfile0
+rm -f /var/lib/mysql/ib_logfile1
+rm -f /var/lib/mysql/ibdata1
+
+root_password=`date |md5sum |cut -c '14-30'`
+
+# Random password for MySQL root account
+root_password=`date |md5sum |cut -c '14-30'`
+sleep 1
+# Random password for MySQL admin account
+admin_password=`date |md5sum |cut -c '14-30'`
+'/usr/bin/mysqladmin' -u root password "$root_password"
+mysql -u root -p"$root_password" -e "GRANT ALL PRIVILEGES ON *.* TO 'admin'@'localhost' IDENTIFIED BY '$admin_password' WITH GRANT OPTION;"
+mysql -u root -p"$root_password" -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost')"
+mysql -u root -p"$root_password" -e "DELETE FROM mysql.user WHERE User=''"
+mysql -u root -p"$root_password" -e "DROP User '';"
+mysql -u root -p"$root_password" -e "DROP DATABASE test"
+mysql -u root -p"$root_password" -e "FLUSH PRIVILEGES"
+
+cat > "/root/.my.cnf" <<END
+[client]
+user=root
+password=$root_password
+END
+chmod 600 /root/.my.cnf
+
+# Fix MariaDB 10
+systemctl stop mariadb
+
+wget -q $script_root/mariadb10_3tables.sql
+
+rm -rf /var/lib/mysql/mysql/gtid_slave_pos.ibd
+rm -rf /var/lib/mysql/mysql/innodb_table_stats.ibd
+rm -rf /var/lib/mysql/mysql/innodb_index_stats.ibd
+
+systemctl start mariadb
+
+mysql -e "ALTER TABLE mysql.gtid_slave_pos DISCARD TABLESPACE;" 2> /dev/null
+mysql -e "ALTER TABLE mysql.innodb_table_stats DISCARD TABLESPACE;" 2> /dev/null
+mysql -e "ALTER TABLE mysql.innodb_index_stats DISCARD TABLESPACE;" 2> /dev/null
+
+mysql mysql < mariadb10_3tables.sql
+
+systemctl restart mariadb
+mysql_upgrade --force mysql
+rm -f mariadb10_3tables.sql
+
+# Log Rotation
+cat > "/etc/logrotate.d/nginx" <<END
+/home/*/logs/access.log /home/*/logs/error.log /home/*/logs/nginx_error.log {
+	create 640 nginx nginx
+        daily
+	dateext
+        missingok
+        rotate 5
+        maxage 7
+        compress
+	size=100M
+        notifempty
+        sharedscripts
+        postrotate
+                [ -f /var/run/nginx.pid ] && kill -USR1 \`cat /var/run/nginx.pid\`
+        endscript
+	su nginx nginx
+}
+END
+
+cat > "/etc/logrotate.d/mysql" <<END
+/home/*/logs/mysql*.log {
+        create 640 mysql mysql
+        notifempty
+        daily
+        rotate 3
+        maxage 7
+        missingok
+        compress
+        postrotate
+        # just if mysqld is really running
+        if test -x /usr/bin/mysqladmin && \
+           /usr/bin/mysqladmin ping &>/dev/null
+        then
+           /usr/bin/mysqladmin flush-logs
+        fi
+        endscript
+	su mysql mysql
+}
+END
+
+# Change port SSH
+sed -i 's/#Port 22/Port 2222/g' /etc/ssh/sshd_config
+
+cat > "/etc/fail2ban/jail.local" <<END
+[sshd]
+enabled  = true
+filter   = sshd
+action   = iptables[name=SSH, port=2222, protocol=tcp]
+logpath  = /var/log/secure
+maxretry = 3
+bantime = 3600
+
+[nginx-http-auth]
+enabled = true
+filter = nginx-http-auth
+action = iptables[name=NoAuthFailures, port=$admin_port, protocol=tcp]
+logpath = /home/$server_name/logs/nginx_error.log
+maxretry = 3
+bantime = 3600
+END
+
+systemctl start fail2ban
+
+# Open port
+if [ -f /etc/sysconfig/iptables ]; then
+	iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+	iptables -I INPUT -p tcp --dport 25 -j ACCEPT
+	iptables -I INPUT -p tcp --dport 443 -j ACCEPT
+	iptables -I INPUT -p tcp --dport 465 -j ACCEPT
+	iptables -I INPUT -p tcp --dport 587 -j ACCEPT
+	iptables -I INPUT -p tcp --dport $admin_port -j ACCEPT
+	iptables -I INPUT -p tcp --dport 2222 -j ACCEPT
+	service iptables save
+fi
+
+chown nginx:nginx /home/$server_name
+chown -R nginx:nginx /home/*/public_html
+chown -R nginx:nginx /home/*/private_html
+
+echo -n "cd /home" >> /root/.bashrc
+
+cat > "/etc/lempscripts.conf" <<END
+server_name="$server_name"
+server_ip="$server_ip"
+admin_port="$admin_port"
+mariadb_root_password="$root_password"
+END
+chmod 600 /etc/lempscripts.conf
+
+cat > "/root/lempscript.txt" <<END
+=========================================================================
+                           MANAGE VPS INFORMATION                        
+=========================================================================
+Primary domain: http://$server_name/ or http://$server_ip/
+
+
+Login infomation:
+Tools:
+    Username: admin
+    Password: $admin_password
+Mariadb:
+    Username: root
+    Password: $root_password
+END
+
+chmod 600 /root/lempscript.txt
+
+echo -e "Restart after 3s.... \n\n"
+sleep 3
+reboot
+exit
