@@ -330,25 +330,25 @@ END
 chmod 600 /root/.my.cnf
 
 # Fix MariaDB 10
-systemctl stop mariadb
+# systemctl stop mariadb
 
-wget -q $script_root/mariadb10_3tables.sql
+# wget -q $script_root/mariadb10_3tables.sql
 
-rm -rf /var/lib/mysql/mysql/gtid_slave_pos.ibd
-rm -rf /var/lib/mysql/mysql/innodb_table_stats.ibd
-rm -rf /var/lib/mysql/mysql/innodb_index_stats.ibd
+# rm -rf /var/lib/mysql/mysql/gtid_slave_pos.ibd
+# rm -rf /var/lib/mysql/mysql/innodb_table_stats.ibd
+# rm -rf /var/lib/mysql/mysql/innodb_index_stats.ibd
 
-systemctl start mariadb
+# systemctl start mariadb
 
-mysql -e "ALTER TABLE mysql.gtid_slave_pos DISCARD TABLESPACE;" 2> /dev/null
-mysql -e "ALTER TABLE mysql.innodb_table_stats DISCARD TABLESPACE;" 2> /dev/null
-mysql -e "ALTER TABLE mysql.innodb_index_stats DISCARD TABLESPACE;" 2> /dev/null
+# mysql -e "ALTER TABLE mysql.gtid_slave_pos DISCARD TABLESPACE;" 2> /dev/null
+# mysql -e "ALTER TABLE mysql.innodb_table_stats DISCARD TABLESPACE;" 2> /dev/null
+# mysql -e "ALTER TABLE mysql.innodb_index_stats DISCARD TABLESPACE;" 2> /dev/null
 
-mysql mysql < mariadb10_3tables.sql
+# mysql mysql < mariadb10_3tables.sql
 
-systemctl restart mariadb
-mysql_upgrade --force mysql
-rm -f mariadb10_3tables.sql
+# systemctl restart mariadb
+# mysql_upgrade --force mysql
+# rm -f mariadb10_3tables.sql
 
 # Log Rotation
 cat > "/etc/logrotate.d/nginx" <<END
