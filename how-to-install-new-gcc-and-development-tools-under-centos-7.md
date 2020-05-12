@@ -175,3 +175,5 @@ warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 As long as you are in this bash shell (you do not type exit) your environment is configured to use GNU GCC 7 and you can use make, cmake to compile your projects with this newer version.
 
 Before entering the devtoolset-7 bash shell, here is the error for the GNU GCC version:
+
+This article of [neoX](https://ahelpme.com/linux/centos7/how-to-install-new-gcc-and-development-tools-under-centos-7/)
