@@ -2,6 +2,7 @@
 
 video="${1:-}"
 audio="${2:-}"
+output="${3:-}"
 
 if [ "$video" == "" ]
 then
@@ -17,7 +18,12 @@ then
     exit
 fi
 
-output="$(basename $video ".mp4")-merged"
+if [ "$output" != "" ]
+then
+    output="${output%%.*}"
+else
+    output="$(basename $video ".mp4")-merged"
+fi
 
 echo "Merge $video && $audio > $output.mp4"
 
@@ -26,3 +32,13 @@ ffmpeg -nostats -loglevel 0 -i $video -i a.aac -c:v copy -c:a aac -strict experi
 
 rm -rf a.aac
 exit
+#
+# ffmpeg -i input.mp4 -ss 00:00:00 -to 00:10:00 -c copy output1.mp4
+# ffmpeg -i input.mp4 -ss 00:10:00 -to 00:20:00 -c copy output2.mp4
+# 
+# /**
+# * -i  input file
+# * -ss start time in seconds or in hh:mm:ss
+# * -to end time in seconds or in hh:mm:ss
+# * -c codec to use
+# */
