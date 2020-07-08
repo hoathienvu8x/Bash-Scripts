@@ -1,0 +1,47 @@
+#!/bin/bash
+
+src="${1:-}"
+dest="${2:-}"
+
+if [ "$src" == "" ] || [ ! -d "$src" ] || [ ! -d "$src/.git" ]
+then
+    echo "Source not found"
+    exit
+fi
+
+if [ "$dest" == "" ] || [ ! -d "$dest" ] || [ ! -d "$dest/.git" ]
+then
+    echo "Destination not found"
+    exit
+fi
+
+cd $src
+
+rm -rf /tmp/mso
+rm -rf /tmp/msh
+rm -rf /tmp/gmlog
+
+for sha1 in $(git log --format=format:%H); do # https://stackoverflow.com/a/20873650
+	echo $sha1 > /tmp/msh
+	if [ -f "/tmp/mso" ]
+	then
+		cat /tmp/mso >> /tmp/msh
+	fi
+	cat /tmp/msh > /tmp/mso
+done
+
+for sha1 in $(cat /tmp/mso);
+do
+	git show -s --format=%B $sha1 > /tmp/gmlog # https://stackoverflow.com/a/54886099
+    at=`git show -s --format='%aN <%ae>' $sha1` # https://git-scm.com/docs/git-show
+    cd=`git show -s --format='%cD' $sha1` # https://git-scm.com/docs/git-show
+	git checkout $sha1
+	cp -rf * $dest/
+	git --git-dir=$dest/.git add .
+	git --git-dir=$dest/.git commit --date="$cd" --author="$at" -F /tmp/gmlog # https://git-scm.com/docs/git-commit
+	git checkout master
+done
+
+rm -rf /tmp/mso
+rm -rf /tmp/msh
+rm -rf /tmp/gmlog
