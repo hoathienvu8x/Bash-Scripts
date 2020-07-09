@@ -1,0 +1,36 @@
+#!/bin/bash
+
+cd /home/build
+
+which wget &> /dev/null
+
+if [[ "$?" != 0 ]]; then
+    yum install -y wget
+fi
+
+which g++ &> /dev/null
+
+if [[ "$?" != 0 ]]; then
+    yum install -y gcc gcc-c++
+fi
+
+which bzip2 &> /dev/null
+
+if [[ "$?" != 0 ]]; then
+    yum install -y bzip2
+fi
+
+GCC_VERSION=7.5.0
+if [ ! -f "gcc-${GCC_VERSION}.tar.gz" ]
+then
+	wget https://ftp.gnu.org/gnu/gcc/gcc-${GCC_VERSION}/gcc-${GCC_VERSION}.tar.gz
+fi
+
+tar xzvf gcc-${GCC_VERSION}.tar.gz
+mkdir obj.gcc-${GCC_VERSION}
+cd gcc-${GCC_VERSION}
+./contrib/download_prerequisites
+cd ../obj.gcc-${GCC_VERSION}
+../gcc-${GCC_VERSION}/configure --disable-multilib --enable-languages=c,c++
+make -j $(nproc)
+make install
