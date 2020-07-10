@@ -1,0 +1,270 @@
+#!/bin/bash
+
+server_name="${1:-}"
+time_zone_name="${2:-}"
+
+if [ "$server_name" == "" ]
+then
+    echo "Server name ?"
+    exit
+fi
+
+if [ "$time_zone_name" == "" ]
+then
+    time_zone_name="Asia/Ho_Chi_Minh"
+fi
+
+config_name="`echo $server_name | sed 's/\./_/g'`"
+yum -y install gawk bc wget lsof ntpdate
+
+server_ip=$(ip route get 8.8.8.8 | awk -F"src " 'NR==1{split($2,a," ");print a[1]}')
+echo "IP: $server_ip"
+
+rm -f /etc/localtime
+ln -sf /usr/share/zoneinfo/$time_zone_name /etc/localtime
+
+if [ -s /etc/selinux/config ]; then
+    sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+    sed -i 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
+fi
+setenforce 0
+
+rpm -Uvh http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
+
+systemctl stop saslauthd
+systemctl disable saslauthd
+
+# Disable the FirewallD Service and use Iptables instead because FirewallD need reboot in order to start
+systemctl stop firewalld
+systemctl disable firewalld
+systemctl mask firewalld
+
+yum clean all
+yum -y update
+
+yum -y install nginx
+
+ntpdate asia.pool.ntp.org
+hwclock --systohc
+
+systemctl enable nginx
+
+mkdir -p /var/log/nginx
+chown -R nginx:nginx /var/log/nginx
+
+mkdir -p /home/$server_name/public_html
+mkdir /home/$server_name/private_html
+mkdir /home/$server_name/logs
+chmod 777 /home/$server_name/logs
+
+# Nginx #
+cat > "/etc/nginx/nginx.conf" <<END
+user nginx;
+worker_processes auto;
+worker_rlimit_nofile 260000;
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
+events {
+    worker_connections  2048;
+    accept_mutex off;
+    accept_mutex_delay 200ms;
+    use epoll;
+    #multi_accept on;
+}
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    charset utf-8;
+    log_format  main  '\$remote_addr - \$remote_user [\$time_local] "\$request" '
+          '\$status \$body_bytes_sent "\$http_referer" '
+          '"\$http_user_agent" "\$http_x_forwarded_for"';
+    #Disable IFRAME
+    add_header X-Frame-Options SAMEORIGIN;
+    #Prevent Cross-site scripting (XSS) attacks
+    add_header X-XSS-Protection "1; mode=block";
+    #Prevent MIME-sniffing
+    add_header X-Content-Type-Options nosniff;
+    access_log  off;
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay off;
+    types_hash_max_size 2048;
+    server_tokens off;
+    server_names_hash_bucket_size 128;
+    client_max_body_size 0;
+    client_body_buffer_size 256k;
+    client_body_in_file_only off;
+    client_body_timeout 60s;
+    client_header_buffer_size 256k;
+    client_header_timeout  20s;
+    large_client_header_buffers 8 256k;
+    keepalive_timeout 10;
+    keepalive_disable msie6;
+    reset_timedout_connection on;
+    send_timeout 60s;
+    gzip on;
+    gzip_static on;
+    gzip_disable "msie6";
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_buffers 16 8k;
+    gzip_http_version 1.1;
+    gzip_types text/plain text/css application/json text/javascript application/javascript text/xml application/xml application/xml+rss;
+    include /etc/nginx/conf.d/*.conf;
+}
+END
+
+cat > "/usr/share/nginx/html/403.html" <<END
+<html>
+<head><title>403 Forbidden</title></head>
+<body bgcolor="white">
+<center><h1>403 Forbidden</h1></center>
+<hr><center>vps nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+END
+
+cat > "/usr/share/nginx/html/404.html" <<END
+<html>
+<head><title>404 Not Found</title></head>
+<body bgcolor="white">
+<center><h1>404 Not Found</h1></center>
+<hr><center>vps nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+END
+
+rm -rf /etc/nginx/conf.d/*
+> /etc/nginx/conf.d/default.conf
+
+cat > "/etc/nginx/conf.d/$config_name.conf" <<END
+server {
+    listen 80;
+    server_name www.$server_name;
+    rewrite ^(.*) http://$server_name\$1 permanent;
+}
+server {
+    listen 80 default_server;
+    # access_log off;
+    access_log /home/$server_name/logs/access.log;
+    # error_log off;
+    error_log /home/$server_name/logs/error.log;
+	
+    root /home/$server_name/public_html;
+    index index.html index.htm;
+    server_name $server_name;
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+    # Custom configuration
+    include /home/$server_name/public_html/*.conf;
+    location /nginx_status {
+        stub_status on;
+        access_log   off;
+        allow 127.0.0.1;
+        allow $server_ip;
+        deny all;
+    }
+    # Disable .htaccess and other hidden files
+    location ~ /\.(?!well-known).* {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    location = /favicon.ico {
+        log_not_found off;
+        access_log off;
+    }
+    location = /robots.txt {
+        allow all;
+        log_not_found off;
+        access_log off;
+    }
+    location ~* \.(3gp|gif|jpg|jpeg|png|ico|wmv|avi|asf|asx|mpg|mpeg|mp4|pls|mp3|mid|wav|swf|flv|exe|zip|tar|rar|gz|tgz|bz2|uha|7z|doc|docx|xls|xlsx|pdf|iso|eot|svg|ttf|woff)$ {
+        gzip_static off;
+        add_header Pragma public;
+        add_header Cache-Control "public, must-revalidate, proxy-revalidate";
+        access_log off;
+        expires 30d;
+        break;
+    }
+    location ~* \.(txt|js|css)$ {
+        add_header Pragma public;
+        add_header Cache-Control "public, must-revalidate, proxy-revalidate";
+        access_log off;
+        expires 30d;
+        break;
+    }
+}
+END
+
+cat >> "/etc/security/limits.conf" <<END
+* soft nofile 262144
+* hard nofile 262144
+nginx soft nofile 262144
+nginx hard nofile 262144
+nobody soft nofile 262144
+nobody hard nofile 262144
+root soft nofile 262144
+root hard nofile 262144
+END
+
+ulimit -n 262144
+
+systemctl start nginx
+
+cat > "/etc/logrotate.d/nginx" <<END
+/home/*/logs/access.log /home/*/logs/error.log /home/*/logs/nginx_error.log {
+	create 640 nginx nginx
+        daily
+	dateext
+        missingok
+        rotate 5
+        maxage 7
+        compress
+	size=100M
+        notifempty
+        sharedscripts
+        postrotate
+                [ -f /var/run/nginx.pid ] && kill -USR1 \`cat /var/run/nginx.pid\`
+        endscript
+	su nginx nginx
+}
+END
+
+chown nginx:nginx /home/$server_name
+chown -R nginx:nginx /home/*/public_html
+chown -R nginx:nginx /home/*/private_html
+
+cat > "/home/$server_name/public_html/index.html" <<END
+<html>
+<head><title>Home Default</title></head>
+<body bgcolor="white">
+<center><h1>It's Works</h1></center>
+<hr><center>vps nginx</center>
+</body>
+</html>
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+<!-- a padding to disable MSIE and Chrome friendly error page -->
+END
+
+echo -n "cd /home" >> /root/.bashrc
+
+exit
