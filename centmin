@@ -13,6 +13,7 @@ extplorer_version="2.1.13" # 05/15/2019 04:43 PM
 extplorer_id="82"
 script_root="https://hocvps.com/scripts"
 script_url="https://hocvps.com/scripts/7"
+centmin_url="https://raw.githubusercontent.com/centminmod/centminmod/master"
 low_ram='262144' # 256MB
 
 yum -y install gawk bc wget lsof
@@ -625,35 +626,37 @@ cp /etc/my.cnf /etc/my.cnf-original
 
 if [[ "$(expr $server_ram_total \<= 2099000)" = "1" ]]; then
 	# echo -e "\nCopying MariaDB my-mdb10-min.cnf file to /etc/my.cnf\n"
-	wget -q $script_root/config/mysql/my-mdb10-min.cnf -O /etc/my.cnf
+	wget -q $centmin_url/config/mysql/my-mdb10-min.cnf -O /etc/my.cnf
 fi
 
 if [[ "$(expr $server_ram_total \> 2100001)" = "1" && "$(expr $server_ram_total \<= 4190000)" = "1" ]]; then
 	# echo -e "\nCopying MariaDB my-mdb10.cnf file to /etc/my.cnf\n"
-	wget -q $script_root/config/mysql/my-mdb10.cnf -O /etc/my.cnf
+	wget -q $centmin_url/config/mysql/my-mdb10.cnf -O /etc/my.cnf
 fi
 
 if [[ "$(expr $server_ram_total \>= 4190001)" = "1" && "$(expr $server_ram_total \<= 8199999)" = "1" ]]; then
 	# echo -e "\nCopying MariaDB my-mdb10-4gb.cnf file to /etc/my.cnf\n"
-	wget -q $script_root/config/mysql/my-mdb10-4gb.cnf -O /etc/my.cnf
+	wget -q $centmin_url/config/mysql/my-mdb10-4gb.cnf -O /etc/my.cnf
 fi
 
 if [[ "$(expr $server_ram_total \>= 8200000)" = "1" && "$(expr $server_ram_total \<= 15999999)" = "1" ]]; then
 	# echo -e "\nCopying MariaDB my-mdb10-8gb.cnf file to /etc/my.cnf\n"
-	wget -q $script_root/config/mysql/my-mdb10-8gb.cnf -O /etc/my.cnf
+	wget -q $centmin_url/config/mysql/my-mdb10-8gb.cnf -O /etc/my.cnf
 fi
 
 if [[ "$(expr $server_ram_total \>= 16000000)" = "1" && "$(expr $server_ram_total \<= 31999999)" = "1" ]]; then
 	# echo -e "\nCopying MariaDB my-mdb10-16gb.cnf file to /etc/my.cnf\n"
-	wget -q $script_root/config/mysql/my-mdb10-16gb.cnf -O /etc/my.cnf
+	wget -q $centmin_url/config/mysql/my-mdb10-16gb.cnf -O /etc/my.cnf
 fi
 
 if [[ "$(expr $server_ram_total \>= 32000000)" = "1" ]]; then
 	# echo -e "\nCopying MariaDB my-mdb10-32gb.cnf file to /etc/my.cnf\n"
-	wget -q $script_root/config/mysql/my-mdb10-32gb.cnf -O /etc/my.cnf
+	wget -q $centmin_url/config/mysql/my-mdb10-32gb.cnf -O /etc/my.cnf
 fi
 
-sed -i "s/server_name_here/$server_name/g" /etc/my.cnf
+sed -i "s/\/var\/lib\/mysql\/slowq.log/\/home\/$server_name\/logs\/mysql-slow.log/g" /etc/my.cnf
+sed -i "s/\/var\/log\/mysqld.log/\/home\/$server_name\/logs\/mysql.log/g" /etc/my.cnf
+sed -i "s/tmpdir=\/home\/mysqltmp//g" /etc/my.cnf
 
 rm -f /var/lib/mysql/ib_logfile0
 rm -f /var/lib/mysql/ib_logfile1
