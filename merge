@@ -36,6 +36,9 @@ exit
 # ffmpeg -i input.mp4 -ss 00:00:00 -to 00:10:00 -c copy output1.mp4
 # ffmpeg -i input.mp4 -ss 00:10:00 -to 00:20:00 -c copy output2.mp4
 # 
+# ffmpeg -loop 1 -i image.jpg -i audio.wav -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest out.mp4
+# ffmpeg -loop 1 -y -i image8.jpg -i sound11.amr -shortest -acodec copy -vcodec mjpeg result.avi
+#
 # /**
 # * -i  input file
 # * -ss start time in seconds or in hh:mm:ss
