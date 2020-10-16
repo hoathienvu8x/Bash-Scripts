@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd /tmp/
+
 module="Foody"
 
 ids=(01J-lp-oVM EHf-IW-A2E 6Tk-OE-BBY iYj-Kq-Ea1 BYZ-38-t0r)
