@@ -1,0 +1,215 @@
+#!/bin/bash
+
+module="Foody"
+
+ids=(01J-lp-oVM EHf-IW-A2E 6Tk-OE-BBY iYj-Kq-Ea1 BYZ-38-t0r)
+
+m_random () {
+    cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${1:-3} | head -n 1
+}
+
+m_contains () {
+    local e match="$1"
+    shift
+    for e; do [[ "$e" == "$match" ]] && return 0; done
+    return 1
+}
+
+m_id (){
+    m="`m_random 3`-`m_random 3`-`m_random 3`"
+    while [[ true ]]; do
+        n=$(m_contains $m "${ids[@]}"; echo $?)
+        if [[ "$n" == "1" ]]; then
+            ids+=($m)
+            break
+        fi
+        m="`m_random 3`-`m_random 3`-`m_random 3`"
+    done
+    echo "$m"
+}
+xml=(splash home restaurant restaurants products product order orders login signup forgot favorites profile slider category categories)
+
+uniq=()
+
+rm -rf android ios
+
+mkdir -p android/app/src/main/res/layout
+mkdir -p ios/$module/Base.lproj
+
+cat > ios/$module/Base.lproj/Main.storyboard <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14109" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="BYZ-38-t0r">
+    <device id="retina5_9" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14088"/>
+        <capability name="Aspect ratio constraints" minToolsVersion="5.1"/>
+        <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+EOF
+cat > ios/$module/Base.lproj/LaunchScreen.storyboard <<EOF
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="13122.16" systemVersion="17A277" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="13104.12"/>
+        <capability name="Safe area layout guides" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="EHf-IW-A2E">
+            <objects>
+                <viewController id="01J-lp-oVM" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="Ze5-6b-2t3">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                        <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="53" y="375"/>
+        </scene>
+    </scenes>
+</document>
+EOF
+for f in "${xml[@]}"
+do
+	cat > android/app/src/main/res/layout/$f.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+</android.support.design.widget.CoordinatorLayout>
+EOF
+	n="$f"
+	if [ "${f:(-3)}" == "ies" ]
+	then
+		n="${n::-3}y"
+	elif [ "${f:(-1)}" == "s" ]
+	then
+        if [ "$n" != "favorites" ];
+        then
+            n="${n::-1}"
+        fi
+	fi
+	uniq+=($n)
+    if [ "$f" == "home" ]; then
+        cat <<EOF>> ios/$module/Base.lproj/Main.storyboard
+        <!--${f^} View Controller-->
+        <scene sceneID="`m_id`">
+            <objects>
+                <viewController id="BYZ-38-t0r" customClass="${n^}Controller" customModule="$module" customModuleProvider="target" sceneMemberID="${n,}Controller">
+                    <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
+                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                    <subviews>
+                        
+                    </subviews>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="`m_id`" sceneMemberID="firstResponder"/>
+            </objects>
+        </scene>
+EOF
+    else
+    cat <<EOF>> ios/$module/Base.lproj/Main.storyboard
+        <!--${f^} View Controller-->
+        <scene sceneID="`m_id`">
+            <objects>
+                <viewController id="`m_id`" customClass="${n^}ViewController" customModule="$module" customModuleProvider="target" sceneMemberID="${n,}Controller">
+                    <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
+                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                    <subviews>
+                        
+                    </subviews>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="`m_id`" sceneMemberID="firstResponder"/>
+            </objects>
+        </scene>
+EOF
+    fi
+done
+
+cat <<EOF>> ios/$module/Base.lproj/Main.storyboard
+    </scenes>
+</document>
+EOF
+
+package="vn/dala/${module,,}"
+
+rdir="android/app/src/main/java/$package"
+
+mkdir -p $rdir
+
+unique=($(echo "${uniq[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
+pname="${package//\//\.}"
+
+mkdir -p ios/$module/Views
+
+for f in "${unique[@]}"
+do
+	layout="$f"
+	if [ "$f" == "category" ];
+	then
+		layout="${f}ies"
+	elif [ "$f" == "restaurant" ] || [ "$f" == "product" ] || [ "$f" == "order" ];
+	then
+		layout="${f}s"
+	fi
+    if [ "$f" != "$layout" ];
+    then
+        cat > $rdir/${f^}.java <<EOF
+package $pname
+
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+
+public class ${f^} extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.$layout);
+    }
+    private void detail${f^}() {
+        
+    }
+}
+EOF
+    else
+	cat > $rdir/${f^}.java <<EOF
+package $pname
+
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+
+public class ${f^} extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.$layout);
+    }
+}
+EOF
+fi
+    cat > ios/$module/Views/${f^}.swift <<EOF
+import UIKit
+
+class ${f^}ViewController : UIViewController {
+    // @IBOutlet weak var iLabel: UILabel!
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+    }
+}
+EOF
+done
