@@ -1,0 +1,659 @@
+#!/bin/bash
+
+wokingdir=`pwd`/mobile
+
+rm -rf $wokingdir/*
+
+app="FoodyApp"
+package="com.dala.foody"
+
+src="java/${package//.//}"
+
+mkdir -p $wokingdir/$app/app/src/main/res/layout
+mkdir -p $wokingdir/$app/app/src/main/$src
+mkdir -p $wokingdir/$app/app/src/main/res/menu
+mkdir -p $wokingdir/$app/app/src/main/res/drawable
+mkdir -p $wokingdir/$app/app/src/main/res/values
+
+files=(splash slide login signup forgot)
+
+for f in "${files[@]}"
+do
+    if [ "$f" != "slide" ]
+    then
+        cat > $wokingdir/$app/app/src/main/res/layout/${f}_layout.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+</android.support.design.widget.CoordinatorLayout>
+EOF
+        cat > $wokingdir/$app/app/src/main/$src/${f^}Activity.java <<EOF
+package $package
+
+import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
+
+public class ${f^}Activity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.${f}_layout);
+    }
+}
+EOF
+    else
+        cat > $wokingdir/$app/app/src/main/res/layout/${f}_layout.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:showIn="@layout/${f}_layout">
+    
+        <android.support.v4.view.ViewPager
+            android:id="@+id/view_pager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+        
+        <LinearLayout
+            android:id="@+id/layoutDots"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:layout_alignParentBottom="true"
+            android:layout_marginBottom="20dp"
+            android:gravity="center"
+            android:orientation="horizontal" />
+        
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:alpha=".5"
+            android:layout_above="@id/layoutDots"
+            android:background="@android:color/white" />
+        
+        <Button
+            android:id="@+id/btn_next"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentRight="true"
+            android:background="@null"
+            android:text="@string/next"
+            android:textColor="@android:color/white" />
+        
+        <Button
+            android:id="@+id/btn_skip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentLeft="true"
+            android:background="@null"
+            android:text="@string/skip"
+            android:textColor="@android:color/white" />
+</android.support.design.widget.CoordinatorLayout>
+EOF
+        cat > $wokingdir/$app/app/src/main/$src/${f^}Activity.java <<EOF
+package $package
+
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Build;
+import android.os.Bundle;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.support.v7.app.AppCompatActivity;
+import android.text.Html;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+public class ${f^}Activity extends AppCompatActivity {
+    private ViewPager viewPager;
+    private SlideAdapter myViewPagerAdapter;
+    private LinearLayout dotsLayout;
+    private TextView[] dots;
+    private int[] layouts;
+    private Button btnSkip, btnNext;
+    private Session session;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        
+        session = new Session(this);
+        if (!session.isFirstTimeLaunch()) {
+            MainScreen();
+            finish();
+        }
+        
+        if (Build.VERSION.SDK_INT >= 21) {
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        }
+        
+        setContentView(R.layout.${f}_layout);
+        
+        viewPager = (ViewPager) findViewById(R.id.view_pager);
+        dotsLayout = (LinearLayout) findViewById(R.id.layoutDots);
+        btnSkip = (Button) findViewById(R.id.btn_skip);
+        btnNext = (Button) findViewById(R.id.btn_next);
+        
+        layouts = new int[]{
+            R.layout.slide1_layout,
+            R.layout.slide2_layout,
+            R.layout.slide3_layout,
+            R.layout.slide4_layout
+        };
+        
+        addBottomDots(0);
+        
+        changeStatusBarColor();
+        
+        myViewPagerAdapter = new MyViewPagerAdapter();
+        viewPager.setAdapter(myViewPagerAdapter);
+        viewPager.addOnPageChangeListener(viewPagerPageChangeListener);
+        
+        btnSkip.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MainScreen();
+            }
+        });
+        
+        btnNext.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int current = getItem(+1);
+                if (current < layouts.length) {
+                    viewPager.setCurrentItem(current);
+                } else {
+                    MainScreen();
+                }
+            }
+        });
+    }
+    private void addBottomDots(int currentPage) {
+        dots = new TextView[layouts.length];
+        int[] colorsActive = getResources().getIntArray(R.array.array_dot_active);
+        int[] colorsInactive = getResources().getIntArray(R.array.array_dot_inactive);
+        
+        dotsLayout.removeAllViews();
+        
+        for (int i = 0; i < dots.length; i++) {
+            dots[i] = new TextView(this);
+            dots[i].setText(Html.fromHtml("&#8226;"));
+            dots[i].setTextSize(35);
+            dots[i].setTextColor(colorsInactive[currentPage]);
+            dotsLayout.addView(dots[i]);
+        }
+        
+        if (dots.length > 0) {
+            dots[currentPage].setTextColor(colorsActive[currentPage]);
+        }
+    }
+    private int getItem(int i) {
+        return viewPager.getCurrentItem() + i;
+    }
+    private void MainScreen() {
+        session.setFirstTimeLaunch(false);
+        startActivity(new Intent(SlideActivity.this, FoodyActivity.class));
+        finish();
+    }
+    ViewPager.OnPageChangeListener viewPagerPageChangeListener = new ViewPager.OnPageChangeListener() {
+        @Override
+        public void onPageSelected(int position) {
+            addBottomDots(position);
+            if (position == layouts.length - 1) {
+                btnNext.setText(getString(R.string.start));
+                btnSkip.setVisibility(View.GONE);
+            } else {
+                btnNext.setText(getString(R.string.next));
+                btnSkip.setVisibility(View.VISIBLE);
+            }
+        }
+        @Override
+        public void onPageScrolled(int arg0, float arg1, int arg2) { }
+        @Override
+        public void onPageScrollStateChanged(int arg0) { }
+    };
+    private void changeStatusBarColor() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(Color.TRANSPARENT);
+        }
+    }
+    public class SlideAdapter extends PagerAdapter {
+        private LayoutInflater layoutInflater;
+        public SlideAdapter() {}
+        @Override
+        public Object instantiateItem(ViewGroup container, int position) {
+            layoutInflater = (LayoutInflater) getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View view = layoutInflater.inflate(layouts[position], container, false);
+            container.addView(view);
+            return view;
+        }
+        @Override
+        public int getCount() {
+            return layouts.length;
+        }
+        @Override
+        public boolean isViewFromObject(View view, Object obj) {
+            return view == obj;
+        }
+        @Override
+        public void destroyItem(ViewGroup container, int position, Object object) {
+            View view = (View) object;
+            container.removeView(view);
+        }
+    }
+}
+EOF
+    fi
+done
+
+files=(home restaurant profile restaurant_detail product product_detail order order_detail category category_detail cart favorites)
+
+for f in "${files[@]}"
+do
+    layout="$f"
+    cls="${f^}"
+    if [ "${f:(-7)}" != "_detail" ]
+    then
+        if [ "$f" == "favorites" ]
+        then
+            layout="favorite_layout"
+            cls="FavoriteActivity"
+        else
+            layout="${f}_layout"
+            cls="${cls}Activity"
+        fi
+    else
+        cls="${cls::-7}Detail"
+    fi
+    cat > $wokingdir/$app/app/src/main/res/layout/${layout}.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+</android.support.design.widget.CoordinatorLayout>
+EOF
+    cat > $wokingdir/$app/app/src/main/$src/${cls}.java <<EOF
+package $package
+
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.Fragment;
+
+public class ${cls} extends Fragment {
+    @Nullable
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.${layout}, container, false);
+        return view;
+    }
+}
+EOF
+done
+
+cat > $wokingdir/$app/app/src/main/res/menu/foody_navigation.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+EOF
+
+nav=(home restaurant product order cart profile favorites)
+
+for n in "${nav[@]}"
+do
+    id="$n"
+    if [ "$id" == "favorites" ]
+    then
+        id="favorite"
+    fi
+    cat > $wokingdir/$app/app/src/main/res/drawable/ic_${id}_black_24dp.xml <<EOF
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24.0"
+    android:viewportHeight="24.0">
+        <path
+            android:fillColor="#FFe29069"
+            android:pathData="" />
+</vector>
+EOF
+    cat <<EOF>> $wokingdir/$app/app/src/main/res/menu/foody_navigation.xml
+    <item
+        android:id="@+id/nav_${id}"
+        android:icon="@drawable/ic_${id}_black_24dp"
+        android:title="${n^}" />
+EOF
+done
+
+cat <<EOF>> $wokingdir/$app/app/src/main/res/menu/foody_navigation.xml
+</menu>
+EOF
+
+# https://codinginflow.com/tutorials/android/bottomnavigationview
+# https://o7planning.org/vi/10491/huong-dan-android-fragment
+
+cat > $wokingdir/$app/app/src/main/res/layout/foody_layout.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:context=".FoodyActivity">
+
+    <FrameLayout
+        android:id="@+id/foody_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/foody_nav"/>
+
+    <android.support.design.widget.BottomNavigationView
+        android:id="@+id/foody_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        app:itemBackground="@color/colorPrimary"
+        app:itemIconTint="@color/white"
+        app:itemTextColor="@color/white"
+        app:menu="@menu/foody_navigation" />
+
+</android.support.design.widget.CoordinatorLayout>
+EOF
+
+cat > $wokingdir/$app/app/src/main/$src/FoodyActivity.java <<EOF
+package $package
+
+import android.support.annotation.NonNull;
+import android.support.design.widget.BottomNavigationView;
+import android.support.v4.app.Fragment;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.view.MenuItem;
+
+public class FoodyActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.foody_layout);
+
+        BottomNavigationView bottomNav = findViewById(R.id.foody_nav);
+        bottomNav.setOnNavigationItemSelectedListener(navFoodyListener);
+
+        if (savedInstanceState == null) {
+            getSupportFragmentManager().beginTransaction().replace(R.id.foody_container, new HomeActivity()).commit();
+        }
+    }
+    private BottomNavigationView.OnNavigationItemSelectedListener navFoodyListener = new BottomNavigationView.OnNavigationItemSelectedListener() {
+        @Override
+        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+            Fragment selectedFragment = null;
+            switch (item.getItemId()) {
+EOF
+
+for n in "${nav[@]}"
+do
+    id="$n"
+    if [ "$n" == "favorites" ]
+    then
+        id="favorite"
+    fi
+    cat <<EOF>> $wokingdir/$app/app/src/main/$src/FoodyActivity.java
+                case R.id.nav_$id: selectedFragment = new ${id^}Activity(); break;
+EOF
+done
+
+cat <<EOF>> $wokingdir/$app/app/src/main/$src/FoodyActivity.java
+            }
+            getSupportFragmentManager().beginTransaction().replace(R.id.foody_container, selectedFragment).commit();
+        }
+    };
+}
+EOF
+
+cat > $wokingdir/$app/app/src/main/res/values/style.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="AppTheme">
+          <item name="windowActionBar">false</item>
+          <item name="windowNoTitle">true</item>
+          <item name="android:statusBarColor" tools:targetApi="lollipop">@android:color/transparent</item>
+          <item name="android:windowTranslucentStatus" tools:targetApi="kitkat">true</item>
+    </style>
+
+    <style name="AppBarLayoutTheme" parent="@style/Theme.AppCompat.Light.NoActionBar">
+        <item name="colorControlNormal">@color/colorPrimary</item>
+        <item name="titleTextColor">@color/colorPrimary</item>
+    </style>
+
+    <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+</resources>
+EOF
+
+cat > $wokingdir/$app/app/src/main/AndroidManifest.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="${package}">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".FoodyActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <action android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".SplashActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".LoginActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".SplashActivity" />
+        </activity>
+
+        <activity
+            android:name=".SlideActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".SplashActivity" />
+        </activity>
+
+        <activity
+            android:name=".SignupActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".LoginActivity" />
+        </activity>
+        <activity
+            android:name=".ForgotActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".LoginActivity" />
+        </activity>
+
+    </application>
+</manifest>
+EOF
+# https://github.com/akrajilwar/Android-Intro-Slider-Screen
+cat > $wokingdir/$app/app/src/main/res/values/dimens.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="slide_img_width">120dp</dimen>
+    <dimen name="slide_img_height">120dp</dimen>
+    <dimen name="slide_title_size">30dp</dimen>
+    <dimen name="slide_desc_padding">40dp</dimen>
+    <dimen name="slide_desc_size">16dp</dimen>
+</resources>
+EOF
+
+cat > $wokingdir/$app/app/src/main/res/values/colors.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#85001F</color>
+    <color name="colorPrimaryDark">#630118</color>
+    <color name="colorAccent">#D8211B</color>
+    <color name="colorNull">#00000000</color>
+    <color name="colorIcons">#7C7F81</color>
+    <color name="colorPrimaryText">#1e1e1e</color>
+    <color name="colorWhite">#FFFFFF</color>
+    <color name="colorWhiteDark">#DBDBDB</color>
+    <color name="colorPrimaryLight">#CA7474</color>
+    <color name="colorBackground">#F4F7F7</color>
+EOF
+cat > $wokingdir/$app/app/src/main/res/values/strings.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Foods App</string>
+    <string name="next">Next</string>
+    <string name="skip">Skip</string>
+EOF
+declare -A sliders=([slide1]=f64c73 [slide2]=20d2bb [slide3]=3395ff [slide4]=c873f4)
+
+for f in "${!sliders[@]}"
+do
+    cat <<EOF>> $wokingdir/$app/app/src/main/res/values/colors.xml
+    <color name="${f}_bg">#{sliders[$f]}</color>
+EOF
+    cat <<EOF>> $wokingdir/$app/app/src/main/res/values/strings.xml
+    <string name="${f}_title">${f^} title</string>
+    <string name="${f}_desc">${f^} sescription</string>
+EOF
+    cat > $wokingdir/$app/app/src/main/res/layout/${f}_layout.xml <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:background="@color/${f}_bg">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <ImageView
+            android:layout_width="@dimen/slide_img_width"
+            android:layout_height="@dimen/slide_img_height"
+            android:src="@drawable/ic_${f}" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/${f}_title"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/slide_title_size"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:paddingLeft="@dimen/slide_desc_padding"
+            android:paddingRight="@dimen/slide_desc_padding"
+            android:text="@string/${f}_desc"
+            android:textAlignment="center"
+            android:textColor="@android:color/white"
+            android:textSize="@dimen/slide_desc_size" />
+
+    </LinearLayout>
+
+</android.support.design.widget.CoordinatorLayout>
+EOF
+done
+cat <<EOF>> $wokingdir/$app/app/src/main/res/values/colors.xml
+    <!-- dots inactive colors -->
+    <color name="dot_dark_screen1">#d1395c</color>
+    <color name="dot_dark_screen2">#14a895</color>
+    <color name="dot_dark_screen3">#2278d4</color>
+    <color name="dot_dark_screen4">#a854d4</color>
+
+    <!-- dots active colors -->
+    <color name="dot_light_screen1">#f98da5</color>
+    <color name="dot_light_screen2">#8cf9eb</color>
+    <color name="dot_light_screen3">#93c6fd</color>
+    <color name="dot_light_screen4">#e4b5fc</color>
+
+    <array name="array_dot_active">
+        <item>@color/dot_light_screen1</item>
+        <item>@color/dot_light_screen2</item>
+        <item>@color/dot_light_screen3</item>
+        <item>@color/dot_light_screen4</item>
+    </array>
+
+    <array name="array_dot_inactive">
+        <item>@color/dot_dark_screen1</item>
+        <item>@color/dot_dark_screen2</item>
+        <item>@color/dot_dark_screen3</item>
+        <item>@color/dot_dark_screen4</item>
+    </array>
+</resources>
+EOF
+cat <<EOF>> $wokingdir/$app/app/src/main/res/values/strings.xml
+</resources>
+EOF
