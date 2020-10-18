@@ -32,7 +32,9 @@ do
 
 </android.support.design.widget.CoordinatorLayout>
 EOF
-        cat > $wokingdir/$app/app/src/main/$src/${f^}Activity.java <<EOF
+        if [ "$f" != "splash" ]
+        then
+            cat > $wokingdir/$app/app/src/main/$src/${f^}Activity.java <<EOF
 package $package
 
 import android.os.Bundle;
@@ -46,6 +48,37 @@ public class ${f^}Activity extends AppCompatActivity {
     }
 }
 EOF
+        else
+            cat > $wokingdir/$app/app/src/main/$src/${f^}Activity.java <<EOF
+package $package
+
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.support.v7.app.AppCompatActivity;
+
+public class ${f^}Activity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.${f}_layout);
+        
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Intent i = new Intent(${f^}Activity.this, LoginActivity.class);
+                startActivity(i);
+                finish();
+            }
+        }, 3000);
+    }
+    @Override
+    public void onBackPressed() {
+        // Do nothing
+    }
+}
+EOF
+        fi
     else
         cat > $wokingdir/$app/app/src/main/res/layout/${f}_layout.xml <<EOF
 <?xml version="1.0" encoding="utf-8"?>
@@ -536,7 +569,7 @@ cat > $wokingdir/$app/app/src/main/AndroidManifest.xml <<EOF
     </application>
 </manifest>
 EOF
-# https://github.com/akrajilwar/Android-Intro-Slider-Screen
+
 cat > $wokingdir/$app/app/src/main/res/values/dimens.xml <<EOF
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
