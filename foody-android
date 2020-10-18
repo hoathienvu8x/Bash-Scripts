@@ -32,6 +32,7 @@ do
 
 </android.support.design.widget.CoordinatorLayout>
 EOF
+        # https://github.com/sambhaji213/Splash-Screen
         if [ "$f" != "splash" ]
         then
             cat > $wokingdir/$app/app/src/main/$src/${f^}Activity.java <<EOF
