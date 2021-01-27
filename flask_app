@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Copy from [12a9583479f7694f94c9](https://gist.github.com/parashardhapola/12a9583479f7694f94c9)
+
+project_name="${1:-}"
+project_dir="${2:-}"
+
+if [ "$project_name" == "" ]; then
+    echo "Project Name ?"
+    exit
+fi
+
+if [ "$project_dir" == "" ]; then
+    project_dir="$HOME/flask-apps"
+fi
+
+mkdir -p $project_dir
+
+project_path="$project_dir/$project_name"
+
+if [ ! -d "$project_path" ]; then
+    mkdir -p $project_path
+elif [ "$(ls -A $project_path)" ]; then
+    echo "$project_path is not empty."
+    exit
+fi
+
+cd $project_path
+
+mkdir -p static templates data
+
+touch forms.py
+
+cat > __init__.py << EOF
+from flask import Flask
+
+app = Flask(__name__)
+from $project_name import views
+EOF
+
+cat > views.py << EOF
+from $project_name import app
+from flask import render_template
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+EOF
+
+cat > run.py << EOF
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.getcwd()))
+from $project_name import app
+
+if __name__ == '__main__':
+    app.run(debug=True)
+EOF
+
+cat > templates/base.html << 'EOF'
+<!DOCTYPE html>
+<html>
+    <head>
+    {% block head %}
+    {% endblock %}
+    </head>
+    
+    <body>
+    {% block content %}
+    {% endblock %}
+    </body>
+</html>
+EOF
+
+cat > templates/index.html << EOF
+{% extends 'base.html' %}
+{% block content %}
+    <h1>$project_name</h1>
+{% endblock %}
+EOF
