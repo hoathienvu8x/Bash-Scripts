@@ -79,3 +79,6 @@ cat > templates/index.html << EOF
     <h1>$project_name</h1>
 {% endblock %}
 EOF
+
+pip freeze > requirements.txt
+python run.py
