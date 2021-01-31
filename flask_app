@@ -29,12 +29,16 @@ cd $project_path
 
 mkdir -p static templates data
 
-touch forms.py
+# touch forms.py
 
 cat > __init__.py << EOF
 from flask import Flask
+from flask_htmlmin import HTMLMIN
 
 app = Flask(__name__)
+app.config['MINIFY_HTML'] = True
+htmlmin = HTMLMIN(app)
+
 from $project_name import views
 EOF
 
@@ -62,10 +66,12 @@ cat > templates/base.html << 'EOF'
 <!DOCTYPE html>
 <html>
     <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=0">
     {% block head %}
     {% endblock %}
     </head>
-    
     <body>
     {% block content %}
     {% endblock %}
@@ -75,10 +81,19 @@ EOF
 
 cat > templates/index.html << EOF
 {% extends 'base.html' %}
+{% block head %}
+<title>$project_name</title>
+{% endblock %}
 {% block content %}
-    <h1>$project_name</h1>
+    <h1>Welcome to $project_name!</h1>
+    <p>Thank you for using ${project_name,,}.</p>
 {% endblock %}
 EOF
 
-pip freeze > requirements.txt
+cat > requirements.txt <<EOF
+Flask
+Flask-HTMLmin
+EOF
+pip install -r requirements.txt
+
 python run.py
