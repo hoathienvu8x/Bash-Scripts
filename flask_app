@@ -59,7 +59,7 @@ sys.path.append(os.path.dirname(os.getcwd()))
 from $project_name import app
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True) # host = '0.0.0.0', port = 5000, debug = False
 EOF
 
 cat > templates/base.html << 'EOF'
@@ -68,6 +68,11 @@ cat > templates/base.html << 'EOF'
     <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=0">
     {% block head %}
     {% endblock %}
