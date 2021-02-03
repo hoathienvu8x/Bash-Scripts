@@ -87,11 +87,20 @@ EOF
 cat > templates/index.html << EOF
 {% extends 'base.html' %}
 {% block head %}
-<title>$project_name</title>
+<title>Welcome to $project_name!</title>
+<style>
+body {
+    width: 35em;
+    margin: 0 auto;
+    font-family: Tahoma, Verdana, Arial, sans-serif;
+}
+</style>
 {% endblock %}
 {% block content %}
     <h1>Welcome to $project_name!</h1>
-    <p>Thank you for using ${project_name,,}.</p>
+    <p>If you see this page, the web server is successfully installed and working. Further configuration is required.</p>
+    <p>For online documentation and support please refer to <a href="https://flask.palletsprojects.com/en/1.1.x/#api-reference" target="_blank">Flask API Reference</a></p>
+    <p><em>Thank you for using ${project_name,,}.</em></p>
 {% endblock %}
 EOF
 
