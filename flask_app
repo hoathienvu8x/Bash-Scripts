@@ -44,7 +44,35 @@ EOF
 
 cat > views.py << EOF
 from $project_name import app
-from flask import render_template
+from flask import render_template, Markup
+import markdown
+
+# https://developpaper.com/question/flask-jinja2-sqlite3-how-to-save-markdown-format-articles/
+"""
+Markdown text is stored in the database, and a filter is implemented on the server side in jinja2, 
+rendering HTML to display markdown. The filter I defined is as follows:
+
+```python
+from app import app
+from flask import Markup
+import markdown
+
+@app.template_filter('markdown')
+def neomarkdown(markdown_content):
+    content = Markup(markdown.markdown(markdown_content))
+    return content
+```
+
+Usage:
+
+```jinja2
+{{ html_content | markdown }}
+```
+"""
+
+@app.template_filter('markdown')
+def neomarkdown(markdown_content):
+    return Markup(markdown.markdown(markdown_content))
 
 @app.route('/')
 def index():
@@ -107,6 +135,7 @@ EOF
 cat > requirements.txt <<EOF
 Flask
 Flask-HTMLmin
+markdown
 EOF
 pip install -r requirements.txt
 
