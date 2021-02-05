@@ -14,9 +14,18 @@ if [ "$project_dir" == "" ]; then
     project_dir="$HOME/flask-apps"
 fi
 
+project_dname="${project_name// /_}" # Replace space to "_" charactor
+project_dname=`echo $project_dname | sed "s/[^[:alnum:]-]/_/g"` # Remove all charactor is not alphabet
+
+project_dname="${project_dname//-/_}" # Replace "-" to "_" 
+project_dname=`echo $project_dname | sed "s/_\{1,\}/_/g"` # Remove multi "_" to one
+project_dname=`echo $project_dname | sed "s/_$//g"` # Right "_" charactor
+
+project_name="${project_dname//_/ }" # Revert "_" to space in name print in template
+
 mkdir -p $project_dir
 
-project_path="$project_dir/$project_name"
+project_path="$project_dir/$project_dname"
 
 if [ ! -d "$project_path" ]; then
     mkdir -p $project_path
@@ -39,11 +48,11 @@ app = Flask(__name__)
 app.config['MINIFY_HTML'] = True
 htmlmin = HTMLMIN(app)
 
-from $project_name import views
+from $project_dname import views
 EOF
 
 cat > views.py << EOF
-from $project_name import app
+from $project_dname import app
 from flask import render_template, Markup
 import markdown
 
@@ -52,7 +61,7 @@ import markdown
 Markdown text is stored in the database, and a filter is implemented on the server side in jinja2, 
 rendering HTML to display markdown. The filter I defined is as follows:
 
-```python
+\`\`\`python
 from app import app
 from flask import Markup
 import markdown
@@ -61,13 +70,13 @@ import markdown
 def neomarkdown(markdown_content):
     content = Markup(markdown.markdown(markdown_content))
     return content
-```
+\`\`\`
 
 Usage:
 
-```jinja2
+\`\`\`jinja2
 {{ html_content | markdown }}
-```
+\`\`\`
 """
 
 @app.template_filter('markdown')
@@ -84,7 +93,7 @@ import os
 import sys
 
 sys.path.append(os.path.dirname(os.getcwd()))
-from $project_name import app
+from $project_dname import app
 
 if __name__ == '__main__':
     app.run(debug=True) # host = '0.0.0.0', port = 5000, debug = False
