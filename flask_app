@@ -4,6 +4,7 @@
 
 project_name="${1:-}"
 project_dir="${2:-}"
+project_rest="${3:-}"
 
 if [ "$project_name" == "" ]; then
     echo "Project Name ?"
@@ -12,6 +13,12 @@ fi
 
 if [ "$project_dir" == "" ]; then
     project_dir="$HOME/flask-apps"
+fi
+
+if [ "$project_rest" != "" ]; then
+    project_rest="y"
+else
+    project_rest="n"
 fi
 
 project_dname="${project_name// /_}" # Replace space to "_" charactor
@@ -36,11 +43,86 @@ fi
 
 cd $project_path
 
-mkdir -p static templates data
+if [ "$project_rest" == "y" ]; then
+    cat > __init__.py << EOF
+from flask import Flask
 
-# touch forms.py
+app = Flask(__name__)
 
-cat > __init__.py << EOF
+from $project_dname import tasks
+EOF
+    cat > tasks.py << EOF
+from $project_dname import app
+from flask import jsonify, abort, make_response, request
+from flask_httpauth import HTTPBasicAuth
+
+auth = HTTPBasicAuth()
+
+@auth.get_password
+def get_password(username):
+    return None
+
+@auth.error_handler
+def unauthorized():
+    return make_response(jsonify({ 'error': 'unauthorized Access' }), 403)
+
+@app.route('/')
+def index():
+    return make_response(jsonify({ 'error' : 'Not Found' }), 404)
+
+@app.route('/update/<int:id>', methods = ['PUT'])
+@auth.login_required
+def update_data(id):
+    return jsonify({})
+
+@app.route('/delete/<int:id>', methods = ['DELETE'])
+@auth.login_required
+def remove_data(id):
+    return jsonify({})
+
+@app.route('/add', methods = ['POST'])
+@auth.login_required
+def add_data(id):
+    return jsonify({}), 201
+
+@app.route('/<int:id>', methods = ['GET'])
+@auth.login_required
+def get_data(id):
+    """
+    if not data:
+        abort(404)
+    """
+    return jsonify({})
+
+@app.route('/lists', methods = ['GET'])
+@auth.login_required
+def get_lists():
+    return jsonify([])
+
+@app.errorhandler(404)
+def not_found(error):
+	return make_response(jsonify({ 'error' : 'Not Found' }), 404)
+EOF
+    cat > run.py << EOF
+import os
+import sys
+
+sys.path.append(os.path.dirname(os.getcwd()))
+from $project_dname import app
+
+if __name__ == '__main__':
+    app.run(debug=True) # host = '0.0.0.0', port = 5000, debug = False
+EOF
+    cat > requirements.txt <<EOF
+Flask
+flask_httpauth
+EOF
+else
+    mkdir -p static templates data
+
+    # touch forms.py
+
+    cat > __init__.py << EOF
 from flask import Flask
 from flask_htmlmin import HTMLMIN
 
@@ -51,7 +133,7 @@ htmlmin = HTMLMIN(app)
 from $project_dname import views
 EOF
 
-cat > views.py << EOF
+    cat > views.py << EOF
 from $project_dname import app
 from flask import render_template, Markup
 import markdown
@@ -88,7 +170,7 @@ def index():
     return render_template('index.html')
 EOF
 
-cat > run.py << EOF
+    cat > run.py << EOF
 import os
 import sys
 
@@ -99,7 +181,7 @@ if __name__ == '__main__':
     app.run(debug=True) # host = '0.0.0.0', port = 5000, debug = False
 EOF
 
-cat > templates/base.html << 'EOF'
+    cat > templates/base.html << 'EOF'
 <!DOCTYPE html>
 <html>
     <head>
@@ -121,7 +203,7 @@ cat > templates/base.html << 'EOF'
 </html>
 EOF
 
-cat > templates/index.html << EOF
+    cat > templates/index.html << EOF
 {% extends 'base.html' %}
 {% block head %}
 <title>Welcome to $project_name!</title>
@@ -140,12 +222,13 @@ body {
     <p><em>Thank you for using ${project_name,,}.</em></p>
 {% endblock %}
 EOF
-
-cat > requirements.txt <<EOF
+    cat > requirements.txt <<EOF
 Flask
 Flask-HTMLmin
 markdown
 EOF
+fi
+
 pip install -r requirements.txt
 
 python run.py
