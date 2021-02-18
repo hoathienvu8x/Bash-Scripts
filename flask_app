@@ -24,7 +24,7 @@ fi
 project_dname="${project_name// /_}" # Replace space to "_" charactor
 project_dname=`echo $project_dname | sed "s/[^[:alnum:]-]/_/g"` # Remove all charactor is not alphabet
 
-project_dname="${project_dname//-/_}" # Replace "-" to "_" 
+project_dname="${project_dname//-/_}" # Replace "-" to "_"
 project_dname=`echo $project_dname | sed "s/_\{1,\}/_/g"` # Remove multi "_" to one
 project_dname=`echo $project_dname | sed "s/_$//g"` # Right "_" charactor
 
@@ -104,6 +104,9 @@ def not_found(error):
 	return make_response(jsonify({ 'error' : 'Not Found' }), 404)
 EOF
     cat > run.py << EOF
+#!/usr/bin/env python
+# coding: utf-8
+
 import os
 import sys
 
@@ -171,6 +174,9 @@ def index():
 EOF
 
     cat > run.py << EOF
+#!/usr/bin/env python
+# coding: utf-8
+
 import os
 import sys
 
@@ -230,5 +236,7 @@ EOF
 fi
 
 pip install -r requirements.txt
+
+chmod a+rx run.py
 
 python run.py
