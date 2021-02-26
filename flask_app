@@ -104,7 +104,7 @@ def not_found(error):
 	return make_response(jsonify({ 'error' : 'Not Found' }), 404)
 EOF
     cat > run.py << EOF
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 import os
@@ -174,7 +174,7 @@ def index():
 EOF
 
     cat > run.py << EOF
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding: utf-8
 
 import os
@@ -235,8 +235,30 @@ markdown
 EOF
 fi
 
-pip install -r requirements.txt
+if ! python3 --version > /dev/null 2>&1; then
+    if [ -f /etc/redhat-release ]; then
+        yum install -y python3
+    elif [ -f /etc/lsb-release ]; then
+        apt-get install python3
+    else
+        echo "Unknown OS"
+        exit 1
+    fi
+fi
+
+if ! pip3 --version > /dev/null 2>&1; then
+    if [ -f /etc/redhat-release ]; then
+        yum -y install python3-pip
+    elif [ -f /etc/lsb-release ]; then
+        apt-get install -y python3-pip
+    else
+        echo "Unknown OS"
+        exit 1
+    fi
+fi
+
+pip3 install -r requirements.txt
 
 chmod a+rx run.py
 
-python run.py
+python3 run.py
