@@ -36,7 +36,15 @@ fi
 
 mkdir -p $project_path/app
 
-mkdir -p $project_path/app/{views,models,templates,static}
+mkdir -p $project_path/app/{views,models,templates,static,scripts}
+
+cat > $project_path/app/scripts/__init__.py <<EOF
+
+EOF
+
+cat > $project_path/app/scripts/initializedb.py <<EOF
+
+EOF
 
 cat > $project_path/app/__init__.py <<EOF
 # -*- coding: utf-8 -*-
