@@ -1,0 +1,163 @@
+#!/bin/bash
+
+# https://codefellows.github.io/sea-python-401d4/lectures/pyramid_day3.html
+
+project_name="${1:-}"
+project_dir="${2:-}"
+
+if [ "$project_name" == "" ]; then
+    echo "Usage: $0 <project_name> [project_dir]"
+    exit 1
+fi
+
+if [ "$project_dir" == "" ]; then
+    project_dir="$HOME/flask-apps"
+fi
+
+project_dname="${project_name// /_}" # Replace space to "_" charactor
+project_dname=`echo $project_dname | sed "s/[^[:alnum:]-]/_/g"` # Remove all charactor is not alphabet
+
+project_dname="${project_dname//-/_}" # Replace "-" to "_"
+project_dname=`echo $project_dname | sed "s/_\{1,\}/_/g"` # Remove multi "_" to one
+project_dname=`echo $project_dname | sed "s/_$//g"` # Right "_" charactor
+
+project_name="${project_dname//_/ }" # Revert "_" to space in name print in template
+
+mkdir -p $project_dir
+
+project_path="$project_dir/$project_dname"
+
+if [ ! -d "$project_path" ]; then
+    mkdir -p $project_path
+elif [ "$(ls -A $project_path)" ]; then
+    echo "$project_path is not empty."
+    exit
+fi
+
+mkdir -p $project_path/app
+
+mkdir -p $project_path/app/{views,models,templates,static}
+
+cat > $project_path/app/__init__.py <<EOF
+# -*- coding: utf-8 -*-
+from flask import Flask
+from flask_htmlmin import HTMLMIN
+
+engine = Flask('app')
+
+engine.config['MINIFY_HTML'] = True
+engine.config['JSON_AS_ASCII'] = False # https://stackoverflow.com/a/39561607
+engine.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+htmlmin = HTMLMIN(engine)
+
+from .views import *
+EOF
+
+cat > $project_path/app/views/__init__.py <<EOF
+import os, glob
+
+__all__ = [os.path.basename(f)[:-3] for f in glob.glob(os.path.dirname(__file__) + "/*.py")]
+EOF
+
+cat > $project_path/app/views/default.py <<EOF
+# -*- coding: utf-8 -*-
+from app import engine
+from flask import render_template
+
+@engine.route('/')
+def start():
+    return render_template('index.html')
+EOF
+
+cat > $project_path/app/templates/base.html << 'EOF'
+<!DOCTYPE html>
+<html>
+    <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=0">
+    {% block head %}
+    {% endblock %}
+    </head>
+    <body>
+    {% block content %}
+    {% endblock %}
+    </body>
+</html>
+EOF
+
+    cat > $project_path/app/templates/index.html << EOF
+{% extends 'base.html' %}
+{% block head %}
+<title>Welcome to $project_name!</title>
+<style>
+body {
+    width: 35em;
+    margin: 0 auto;
+    font-family: Tahoma, Verdana, Arial, sans-serif;
+}
+</style>
+{% endblock %}
+{% block content %}
+    <h1>Welcome to $project_name!</h1>
+    <p>If you see this page, the web server is successfully installed and working. Further configuration is required.</p>
+    <p>For online documentation and support please refer to <a href="https://flask.palletsprojects.com/en/1.1.x/#api-reference" target="_blank">Flask API Reference</a></p>
+    <p><em>Thank you for using ${project_name,,}.</em></p>
+{% endblock %}
+EOF
+
+cat > $project_path/requirements.txt <<EOF
+Flask
+Flask-HTMLmin
+EOF
+
+cat > $project_path/run <<EOF
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+from app import engine
+
+if __name__ == "__main__":
+    engine.run('0.0.0.0', port=4000)
+EOF
+
+if ! python3 --version > /dev/null 2>&1; then
+    if [ -f /etc/redhat-release ]; then
+        yum install -y python3
+    elif [ -f /etc/lsb-release ]; then
+        apt-get install python3
+    else
+        echo "Unknown OS"
+        exit 1
+    fi
+fi
+
+if ! pip3 --version > /dev/null 2>&1; then
+    if [ -f /etc/redhat-release ]; then
+        yum -y install python3-pip
+    elif [ -f /etc/lsb-release ]; then
+        apt-get install -y python3-pip
+    else
+        echo "Unknown OS"
+        exit 1
+    fi
+fi
+
+cd $project_path
+
+echo "Install requirements..."
+
+pip3 -q install -r requirements.txt
+
+echo "Change mod to execute \`run\` file"
+
+chmod 755 $project_path/run
+
+echo "Run app"
+
+./run
