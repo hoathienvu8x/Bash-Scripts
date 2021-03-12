@@ -48,15 +48,25 @@ EOF
 
 cat > $project_path/app/__init__.py <<EOF
 # -*- coding: utf-8 -*-
+
+import os
 from flask import Flask
 from flask_htmlmin import HTMLMIN
+from flask_sqlalchemy import SQLAlchemy
 
 engine = Flask('app')
 
 engine.config['MINIFY_HTML'] = True
 engine.config['JSON_AS_ASCII'] = False # https://stackoverflow.com/a/39561607
 engine.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+
+engine.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(engine.root_path, "database.db")
+engine.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 htmlmin = HTMLMIN(engine)
+db = SQLAlchemy(engine)
+
+SITE_URL = ''
 
 from .views import *
 EOF
@@ -67,14 +77,103 @@ import os, glob
 __all__ = [os.path.basename(f)[:-3] for f in glob.glob(os.path.dirname(__file__) + "/*.py")]
 EOF
 
+cat > $project_path/app/views/common.py <<EOF
+# -*- coding: utf-8 -*-
+
+EOF
+
+cat > $project_path/app/views/errors.py <<EOF
+# -*- coding: utf-8 -*-
+
+from app import engine, SITE_URL
+from flask import render_template, make_response
+
+@engine.errorhandler(404)
+def not_found(err):
+    return make_response(
+        render_template(
+            "error.html",
+            title="404 Not Found",
+            site_url=SITE_URL,
+        ),
+        404
+    )
+
+@engine.errorhandler(400)
+def bad_request(err):
+    return make_response(
+        render_template(
+            "error.html",
+            title="400 Bad Requested",
+            site_url=SITE_URL,
+        ),
+        400
+    )
+
+@engine.errorhandler(500)
+def server_error(err):
+    return make_response(
+        render_template(
+            "error.html",
+            title="500 Internal Server Error",
+            site_url=SITE_URL,
+        ),
+        500
+    )
+
+@engine.errorhandler(405)
+def not_allowed(err):
+    return make_response(
+        render_template(
+            "error.html",
+            title="405 Method Now Allowed",
+            site_url=SITE_URL,
+        ),
+        405
+    )
+
+@engine.errorhandler(403)
+def not_allowed(err):
+    return make_response(
+        render_template(
+            "error.html",
+            title="403 Forbidden",
+            site_url=SITE_URL,
+        ),
+        403
+    )
+EOF
+
 cat > $project_path/app/views/default.py <<EOF
 # -*- coding: utf-8 -*-
-from app import engine
+
+from app import engine, SITE_URL
 from flask import render_template
 
 @engine.route('/')
 def start():
-    return render_template('index.html')
+    return render_template('index.html', site_url=SITE_URL)
+EOF
+
+cat > $project_path/app/views/api.py <<EOF
+# -*- coding: utf-8 -*-
+
+def _flash_message(status="error", data=None, msg="", code=-1):
+    return {
+        "status":status,
+        "data":data,
+        "msg":msg,
+        "code":code
+    }
+
+def do_query_home():
+    return _flash_message(msg="Homepage called", code=0)
+EOF
+
+cat > $project_path/app/templates/error.html <<EOF
+{{ title }}
+
+[Home page]({{ site_url }})
 EOF
 
 cat > $project_path/app/templates/base.html << 'EOF'
@@ -122,7 +221,87 @@ EOF
 cat > $project_path/requirements.txt <<EOF
 Flask
 Flask-HTMLmin
+markdown
+flask-sqlalchemy
+bcrypt
 EOF
+
+files=(Article Term User articleTerm)
+
+for f in "${files[@]}";
+do
+    n="${f,,}"
+    tn="$n"
+    if [ "$n" == "articleterm" ]; then
+        tn="article_term"
+    fi
+    cat > $project_path/app/models/$n.py <<EOF
+# -*- coding: utf-8 -*-
+
+from app import db
+import json
+
+class $f(db.Model):
+    __tablename__ = "${tn}s"
+
+    id db.Column(db.Integer,primary_key=True)
+
+    def __init__(self):
+        pass
+
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
+        return self
+
+    @property
+    def serialize(self):
+        return {
+            "id": self.id,
+        }
+
+    @property
+    def to_json(self):
+        return json.dumps(self.serialize)
+EOF
+    if [ "$n" != "articleterm" ]; then
+        acts=()
+        if [ "$n" == "user" ]; then
+            acts=("author")
+        elif [ "$n" == "term" ]; then
+            acts+=($n)
+            acts+=("tag")
+            acts+=("category")
+        fi
+        for fn in "${acts[@]}";
+        do
+            cat > $project_path/app/views/$fn.py <<EOF
+# -*- coding: utf-8 -*-
+
+from app import engine, SITE_URL
+from flask import render_template
+
+@engine.route('/$fn')
+def $fn():
+    return render_template('$fn.html', site_url=SITE_URL)
+EOF
+            cat > $project_path/app/templates/$fn.html << EOF
+{% extends 'base.html' %}
+{% block head %}
+<title>${fn^}</title>
+{% endblock %}
+{% block content %}
+<h1>${fn^}</h1>
+{% endblock %}
+EOF
+            cat <<EOF>> $project_path/app/views/api.py
+
+def do_query_$fn():
+    return _flash_message(msg="${fn^} called", code=0)
+EOF
+        done
+    fi
+done
 
 cat > $project_path/run <<EOF
 #!/usr/bin/env python3
