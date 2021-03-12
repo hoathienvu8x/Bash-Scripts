@@ -246,7 +246,7 @@ import json
 class $f(db.Model):
     __tablename__ = "${tn}s"
 
-    id db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
 
     def __init__(self):
         pass
