@@ -226,7 +226,7 @@ flask-sqlalchemy
 bcrypt
 EOF
 
-files=(Article Term User articleTerm)
+files=(Article Term User ArticleTerm ArticleMeta)
 
 for f in "${files[@]}";
 do
@@ -234,6 +234,8 @@ do
     tn="$n"
     if [ "$n" == "articleterm" ]; then
         tn="article_term"
+    elif [ "$n" == "articlemeta" ]; then
+        tn="article_meta"
     fi
     cat > $project_path/app/models/$n.py <<EOF
 # -*- coding: utf-8 -*-
@@ -244,7 +246,7 @@ import json
 class $f(db.Model):
     __tablename__ = "${tn}s"
 
-    id db.Column(db.Integer,primary_key=True)
+    id db.Column(db.Integer, primary_key=True)
 
     def __init__(self):
         pass
@@ -264,7 +266,7 @@ class $f(db.Model):
     def to_json(self):
         return json.dumps(self.serialize)
 EOF
-    if [ "$n" != "articleterm" ]; then
+    if [ "$n" != "articleterm" ] && [ "$n" != "articlemeta" ]; then
         acts=()
         if [ "$n" == "user" ]; then
             acts=("author")
