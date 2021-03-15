@@ -309,9 +309,14 @@ cat > $project_path/run <<EOF
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
 from app import engine
 
 if __name__ == "__main__":
+    # https://stackoverflow.com/a/4033743
+    if len(sys.argv[1:]) > 0 and sys.argv[1].lower() == "initdb":
+        print("Init database")
+        sys.exit()
     engine.run('0.0.0.0', port=4000)
 EOF
 
