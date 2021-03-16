@@ -172,7 +172,11 @@ EOF
 
 cat > $project_path/app/templates/error.html <<EOF
 {{ title }}
-
+{% if msg %}
+    {{ msg }}
+{% else %}
+    Nothing to say !
+{% endif %}
 [Home page]({{ site_url }})
 EOF
 
@@ -222,6 +226,7 @@ cat > $project_path/requirements.txt <<EOF
 Flask
 Flask-HTMLmin
 markdown
+Flask-Session
 flask-sqlalchemy
 bcrypt
 EOF
@@ -241,7 +246,12 @@ do
 # -*- coding: utf-8 -*-
 
 from app import db
+from enum import Enum
 import json
+
+class ${f}Code(Enum):
+    def __str__(self):
+        return 'Code -{}'.format(self.value)
 
 class $f(db.Model):
     __tablename__ = "${tn}s"
@@ -253,6 +263,11 @@ class $f(db.Model):
 
     def save(self):
         db.session.add(self)
+        db.session.commit()
+        return self
+
+    def remove(self):
+        db.session.delete(self)
         db.session.commit()
         return self
 
