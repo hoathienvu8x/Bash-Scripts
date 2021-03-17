@@ -14,14 +14,13 @@ if [ "$project_dir" == "" ]; then
     project_dir="$HOME/flask-apps"
 fi
 
-project_dname="${project_name// /_}" # Replace space to "_" charactor
-project_dname=`echo $project_dname | sed "s/[^[:alnum:]-]/_/g"` # Remove all charactor is not alphabet
+project_dname="${project_name// /-}" # Replace space to "-" charactor
+project_dname=`echo $project_dname | sed "s/[^[:alnum:]-]/-/g"` # Remove all charactor is not alphabet
 
-project_dname="${project_dname//-/_}" # Replace "-" to "_"
-project_dname=`echo $project_dname | sed "s/_\{1,\}/_/g"` # Remove multi "_" to one
-project_dname=`echo $project_dname | sed "s/_$//g"` # Right "_" charactor
+project_dname=`echo $project_dname | sed "s/-\{1,\}/-/g"` # Remove multi "-" to one
+project_dname=`echo $project_dname | sed "s/-$//g"` # Right "-" charactor
 
-project_name="${project_dname//_/ }" # Revert "_" to space in name print in template
+project_name="${project_dname//-/ }" # Revert "-" to space in name print in template
 
 mkdir -p $project_dir
 
@@ -170,7 +169,9 @@ def do_query_home():
     return _flash_message(msg="Homepage called", code=0)
 EOF
 
-cat > $project_path/app/templates/error.html <<EOF
+mkdir -p $project_path/tmpl
+
+cat > $project_path/tmpl/error.html <<EOF
 {{ title }}
 {% if msg %}
     {{ msg }}
@@ -180,7 +181,7 @@ cat > $project_path/app/templates/error.html <<EOF
 [Home page]({{ site_url }})
 EOF
 
-cat > $project_path/app/templates/base.html << 'EOF'
+cat > $project_path/tmpl/base.html << 'EOF'
 <!DOCTYPE html>
 <html>
     <head>
@@ -202,7 +203,7 @@ cat > $project_path/app/templates/base.html << 'EOF'
 </html>
 EOF
 
-    cat > $project_path/app/templates/index.html << EOF
+    cat > $project_path/tmpl/index.html << EOF
 {% extends 'base.html' %}
 {% block head %}
 <title>Welcome to $project_name!</title>
@@ -227,7 +228,8 @@ Flask
 Flask-HTMLmin
 markdown
 Flask-Session
-flask-sqlalchemy
+flask-sqlalchemy>=0.15
+SQLAlchemy<1.4.0
 bcrypt
 EOF
 
@@ -302,7 +304,7 @@ from flask import render_template
 def $fn():
     return render_template('$fn.html', site_url=SITE_URL)
 EOF
-            cat > $project_path/app/templates/$fn.html << EOF
+            cat > $project_path/tmpl/$fn.html << EOF
 {% extends 'base.html' %}
 {% block head %}
 <title>${fn^}</title>
@@ -361,7 +363,17 @@ cd $project_path
 
 echo "Install requirements..."
 
-pip3 -q install -r requirements.txt
+pip3 -q --no-cache-dir install -r requirements.txt &> /dev/null
+
+echo "Create \`build\` file to minified template"
+
+echo 'IyEvYmluL2Jhc2gKClJPT1RfRElSPWBwd2RgCgpTUkNESVI9IiRST09UX0RJUi90bXBsIgpERVNURElSPSIkUk9PVF9ESVIvYXBwL3RlbXBsYXRlcyIKCiMgQ2hlY2sgZm9sZGVyIGV4aXN0cwppZiBbICEgLWQgIiRTUkNESVIiIF07IHRoZW4KICAgIGVjaG8gIk5vIHRlbXBsYXRlIgogICAgZXhpdApmaQoKaWYgWyAhIC1kICIkREVTVERJUiIgXTsgdGhlbgogICAgbWtkaXIgLXAgJERFU1RESVIKZWxzZQogICAgcm0gLXJmICRERVNURElSLyoKZmkKCiMgRnVuY3Rpb24gbWluaWZpZWQgZmlsZQpmdW5jdGlvbiBtaW5fZmlsZSgpIHsKICAgIHNlZCAtaSAnOmE7TjtiYTtzL1xuLy9nJyAkMQogICAgc2VkIC1pICdzL1x0LyAvZycgJDEKICAgIHNlZCAtaSAncy8gICAgLy9nJyAkMQogICAgc2VkIC1pICdzL1wqL1xcXCovZycgJDEKICAgIHN0cj1gY2F0ICQxYAogICAgc3RyPWB0cmltICRzdHJgCiAgICBlY2hvICRzdHIgPiAkMQogICAgZWNobyAtbiAkKGNhdCAkMSkgPiAkMQogICAgc2VkIC1pICdzL1xcXCovXCovZycgJDEKICAgIHNlZCAtaSAncy8+IHsvPnsvZycgJDEKICAgIHNlZCAtaSAncy99IHsvfXsvZycgJDEKICAgIHNlZCAtaSAncy8+IDwvPjwvZycgJDEKICAgIHNlZCAtaSAncy8+IHsxLH08Lz48L2cnICQxCiAgICBzZWQgLWkgJ3MveyMve3sgInsjIiB9fS9nJyAkMQogICAgc2VkIC1pICdzL317eyBhcmdzXC5zdGF0dXMvfSB7eyBhcmdzLnN0YXR1cy9nJyAkMQp9CmZ1bmN0aW9uIG1pbl9jc3MoKSB7CiAgICAjIGh0dHBzOi8vbGludXhoaW50LmNvbS9yZXBsYWNlX3N0cmluZ19pbl9maWxlX2Jhc2gvCiAgICAjIGh0dHBzOi8vd3d3LmxpbnV4cXVlc3Rpb25zLm9yZy9xdWVzdGlvbnMvcHJvZ3JhbW1pbmctOS9yZW1vdmUtY3NzLWNvbW1lbnRzLXdpdGgtc2VkLTc3Njg1My8KICAgIGF3ayAtdlJTPSIqLyIgJ3tnc3ViKC9cL1wqLiovLCIiKX0xJyAkMSA+IHRlbXAudHh0ICYmIG12IHRlbXAudHh0ICQxCiAgICBzZWQgLWkgJ3MvXCovXFxcKi9nJyAkMQogICAgc3RyPWBjYXQgJDFgCiAgICBzdHI9YHRyaW0gJHN0cmAKICAgIGVjaG8gJHN0ciA+ICQxCiAgICBzZWQgLWkgJ3MvIHsvey9nJyAkMQogICAgc2VkIC1pICdzL3sgL3svZycgJDEKICAgIHNlZCAtaSAncy99IC99L2cnICQxCiAgICBzZWQgLWkgJ3MvLCAvLC9nJyAkMQogICAgc2VkIC1pICdzLzsgLzsvZycgJDEKICAgIHNlZCAtaSAncy86IC86L2cnICQxCiAgICBzZWQgLWkgJ3MvIHsvey9nJyAkMQogICAgc2VkIC1pICdzLyB9L30vZycgJDEKICAgIHNlZCAtaSAncy8gPiAvPi9nJyAkMQogICAgc2VkIC1pICdzL1xcXCovXCovZycgJDEKICAgICMgaHR0cHM6Ly9qaW5qYS5wYWxsZXRzcHJvamVjdHMuY29tL2VuLzIuMTEueC90ZW1wbGF0ZXMvI2VzY2FwaW5nCiAgICBzZWQgLWkgJ3MveyMve3sgInsjIiB9fS9nJyAkMQp9CiMgaHR0cHM6Ly9zdGFja292ZXJmbG93LmNvbS9hLzMzNTIwMTUKZnVuY3Rpb24gdHJpbSgpIHsKICAgIGxvY2FsIHZhcj0iJCoiCiAgICAjIHJlbW92ZSBsZWFkaW5nIHdoaXRlc3BhY2UgY2hhcmFjdGVycwogICAgdmFyPSIke3ZhciMiJHt2YXIlJVshWzpzcGFjZTpdXSp9In0iCiAgICAjIHJlbW92ZSB0cmFpbGluZyB3aGl0ZXNwYWNlIGNoYXJhY3RlcnMKICAgIHZhcj0iJHt2YXIlIiR7dmFyIyMqWyFbOnNwYWNlOl1dfSJ9IgogICAgZWNobyAtbiAiJHZhciIKfQojIFNjYW4gZmlsZSB0ZW1wbGF0ZSB0byBidWlsZApmb3IgZmlsZSBpbiBgZmluZCAkU1JDRElSLyAtbmFtZSAiKi5odG1sImA7IGRvCiAgICBpZiBbWyAkKGR1IC1rICIkZmlsZSIgfCBjdXQgLWYgMSkgLW5lIDAgXV07IHRoZW4KICAgICAgICBuZXdmaWxlPSQoYmFzZW5hbWUgJGZpbGUpICMgaHR0cHM6Ly91bml4LnN0YWNrZXhjaGFuZ2UuY29tL2EvMTM3MDMxICsgaHR0cDovL3d3dy5ncnltb2lyZS5jb20vVW5peC9TZWQuaHRtbCN1aC0xNWIKICAgICAgICBjcCAtcmYgJGZpbGUgJERFU1RESVIvJHtuZXdmaWxlfQogICAgICAgIG1pbl9maWxlICIkREVTVERJUi8ke25ld2ZpbGV9IgogICAgZWxzZQogICAgICAgIGVjaG8gIkZpbGUgJGZpbGUgaXMgZW1wdHkgY29udGVudCIKICAgIGZpCmRvbmUKZm9yIGZpbGUgaW4gYGZpbmQgJFNSQ0RJUi8gLW5hbWUgIiouY3NzImA7IGRvCiAgICBpZiBbWyAkKGR1IC1rICIkZmlsZSIgfCBjdXQgLWYgMSkgLW5lIDAgXV07IHRoZW4KICAgICAgICBuZXdmaWxlPSQoYmFzZW5hbWUgJGZpbGUpCiAgICAgICAgY3AgLXJmICRmaWxlICRERVNURElSLyR7bmV3ZmlsZX0KICAgICAgICBtaW5fZmlsZSAiJERFU1RESVIvJHtuZXdmaWxlfSIKICAgICAgICBtaW5fY3NzICIkREVTVERJUi8ke25ld2ZpbGV9IgogICAgZWxzZQogICAgICAgIGVjaG8gIkZpbGUgJGZpbGUgaXMgZW1wdHkgY29udGVudCIKICAgIGZpCmRvbmUKCmNsZWFyCmV4aXQK' | base64 -d > $project_path/build
+
+chmod 755 $project_path/build
+
+echo "Minified template"
+
+./build
 
 echo "Change mod to execute \`run\` file"
 
