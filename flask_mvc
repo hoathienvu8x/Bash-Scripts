@@ -233,6 +233,31 @@ SQLAlchemy<1.4.0
 bcrypt
 EOF
 
+cat > $project_path/app/models/__init__.py <<EOF
+# -*- coding: utf-8 -*-
+
+import bcrypt, enum
+
+def hash_password(password):
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode(), salt)
+
+def verify_password(stored_password, provided_password):
+    return bcrypt.checkpw(provided_password.encode(), stored_password)
+
+class Enum(enum.Enum):
+    def __str__(self):
+        return "{}".format(self.value)
+
+    @property
+    def state(self):
+        return "warning"
+
+    @property
+    def msg(self):
+        return str(self)
+EOF
+
 files=(Article Term User ArticleTerm ArticleMeta)
 
 for f in "${files[@]}";
@@ -248,12 +273,20 @@ do
 # -*- coding: utf-8 -*-
 
 from app import db
-from enum import Enum
+from . import Enum
 import json
 
 class ${f}Code(Enum):
     def __str__(self):
-        return 'Code -{}'.format(self.value)
+        return '{}'.format(self.value)
+
+    @property
+    def msg(self):
+        return "Code - {}".format(self.value) # Check by self.name
+
+    @property
+    def state(self):
+        return "warning" # Check self.name return custom state
 
 class $f(db.Model):
     __tablename__ = "${tn}s"
@@ -266,6 +299,18 @@ class $f(db.Model):
     def save(self):
         db.session.add(self)
         db.session.commit()
+        return self
+
+    def update(self, **kwargs):
+        fields = {}
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+                fields[key] = value
+
+        if len(fields) > 0:
+            db.session.commit()
+
         return self
 
     def remove(self):
