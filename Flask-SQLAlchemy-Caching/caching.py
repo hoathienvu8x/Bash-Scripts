@@ -5,7 +5,7 @@ import functools
 import hashlib
 
 from flask.ext.sqlalchemy import BaseQuery
-from sqlalchemy import event, select
+from sqlalchemy import event, select, inspect
 from sqlalchemy.orm.interfaces import MapperOption
 from sqlalchemy.orm.attributes import get_history
 from sqlalchemy.ext.declarative import declared_attr
@@ -199,7 +199,7 @@ class Cache(object):
             if len(kwargs) > 1:
                 raise TypeError('filter accept only one attribute for filtering')
             key, value = kwargs.items()[0]
-            if key not in self._columns():
+            if key not in self._attrs():
                 raise TypeError('%s does not have an attribute %s' % self, key)
             query_kwargs[key] = value
 
@@ -236,8 +236,8 @@ class Cache(object):
 
 
     @memoize
-    def _columns(self):
-        return [c.name for c in self.model.__table__.columns if c.name != self.pk]
+    def _attrs(self):
+        return [a.key for a in inspect(self.model).attrs if a.key != self.pk]
 
 
     @memoize
@@ -266,10 +266,10 @@ class Cache(object):
 
 
     def _flush_all(self, obj):
-        for column in self._columns():
-            added, unchanged, deleted = get_history(obj, column)
+        for attr in self._attrs():
+            added, unchanged, deleted = get_history(obj, attr)
             for value in list(deleted) + list(added):
-                self.flush(self._cache_key(**{column: value}))
+                self.flush(self._cache_key(**{attr: value}))
         # flush "all" listing
         self.flush(self._cache_key())
         # flush the object
