@@ -746,3 +746,89 @@ OUTPUT
 ```
 [Calvin]
 ```
+
+# Using multiple database with same model in flask-sqlalchemy
+
+So I have multiple database. `DB_US` and `DB_UK`. They have the exact same structure but they hold data for different countries. I have an api with flask_restful. The endpoint accept a country to retrieve the data of this specific country.
+
+My problem is I can't figure out how to select the database per request. I've read the bind method, but you have to specify a `__bind_key` per model and all my model are in both databases.
+
+I've tried to initialize the database within the `@before_request`, but you can't call the `init_db` method (or any setup method) after the first request has been handled.
+
+This is a particular case because the database are identical so it seems like it would make sense to have it in the same database, but it's part of a larger system and needs to be that way.
+
+How could I select the database on a per request basis?
+
+Maybe you can define some base data models and inherit them for separate database. For example:
+
+```py
+class User(db.Model):
+
+    __abstract__ = 1
+
+    # fields define
+
+class UserUK(User):
+
+    __bind_key__ = 'uk'
+
+class UserUS(User):
+
+    __bind_key__ = 'us'
+```
+
+You can create a dict which is `model = {"uk": {"User": UserUK}, "us": {"User": UserUS}}` to select proper model by country from request. For example: `model[country]["User"]`.
+
+Full Demo:
+
+```py
+import time
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////path/2/default.db"
+app.config["SQLALCHEMY_BINDS"] = {"uk": "sqlite:////path/2/uk.db", "us": "sqlite:////path/2/us.db"}
+
+db = SQLAlchemy(app)
+
+
+class UserBase(db.Model):
+
+    __abstract__ = 1
+
+    id = db.Column(db.Integer, primary_key=1)
+
+    username = db.Column(db.String(16))
+
+
+class UserUK(UserBase):
+
+    __bind_key__ = "uk"
+
+
+class UserUS(UserBase):
+
+    __bind_key__ = "us"
+
+
+models = {"uk": {"User": UserUK}, "us": {"User": UserUS}}
+
+
+@app.route("/<country>")
+def index(country):
+
+    user = models[country]["User"](username=country + str(time.time()))
+
+    db.session.add(user)
+
+    db.session.commit()
+
+    return country, "added"
+
+
+if __name__ == "__main__":
+
+    app.run(debug=1)
+```
