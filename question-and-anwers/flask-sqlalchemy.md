@@ -6,7 +6,7 @@ Following situation: I have a photo album software (python) and the different al
 
 Creating a db session:
 
-```
+```python
 maker = sessionmaker(autoflush=True, autocommit=False,
                  extension=ZopeTransactionExtension())
 DBSession = scoped_session(maker)
@@ -15,7 +15,7 @@ DBSession = scoped_session(maker)
 
 Base class and metadata for db model:
 
-```
+```python
 DeclarativeBase = declarative_base()
 metadata = DeclarativeBase.metadata
 ```
@@ -23,7 +23,7 @@ metadata = DeclarativeBase.metadata
 
 Defining database model (shortened):
 
-```
+```python
 pic_tag_table = Table('pic_tag', metadata,
                       Column('pic_id', Integer,
                              ForeignKey('pic.pic_id'),
@@ -52,7 +52,7 @@ class Tags(DeckarativeBase):
 
 And finally open the connection:
 
-```
+```python
 engine = engine_from_config(config, '...')
 DBSession.configure(bind=engine)
 metadata.bind = engine
@@ -65,7 +65,7 @@ P.S.: I also want to query the databases via the ORM, e.g. DBSession.query(Pictu
 
 You can achieve this with multiple engines and sessions (you don't need multiple metadata):
 
-```
+```python
 engine1 = create_engine("sqlite:///tmp1.db")
 engine2 = create_engine("sqlite:///tmp2.db")
 Base.metadata.create_all(bind=engine1)
@@ -89,7 +89,7 @@ session2.close()
 
 For `scoped_session`, you can create multiple of those as well.
 
-```
+```python
 engine1 = create_engine("sqlite:///tmp1.db")
 engine2 = create_engine("sqlite:///tmp2.db")
 Base.metadata.create_all(bind=engine1)
@@ -112,7 +112,7 @@ Whenever I insert or update new data, it goes into db1, and db2 is basically rea
 
 You are looking for the [Horizontal Sharding](http://sqlalchemy.readthedocs.org/en/rel_0_9/orm/extensions/horizontal_shard.html) extension, an example usage of which is provided in the [documentation](http://sqlalchemy.readthedocs.org/en/rel_0_9/_modules/examples/sharding/attribute_shard.html). This allows you to use a special ShardedSession which uses various dispatch functions to decide which database to talk to.
 
-```
+```python
 def shard_chooser(mapper, instance, clause=None):
     """return a shard key based on the instance being handled"""
 
@@ -154,7 +154,7 @@ OK, we went with the custom SQLAlchemy declaration rather than the declarative o
 
 So we create a dynamic table object like this:
 
-```
+```python
 from sqlalchemy import MetaData, Table, Column
 
 def get_table_object(self, md5hash):
@@ -174,7 +174,7 @@ Where ActualTableObject is the class mapping to the table.
 
 In [Augmenting the Base](https://docs.sqlalchemy.org/en/13/orm/extensions/declarative/mixins.html#augmenting-the-base) you find a way of using a custom `Base` class that can, for example, calculate the `__tablename__` attribure dynamically:
 
-```
+```python
 class Base(object):
     @declared_attr
     def __tablename__(cls):
@@ -188,7 +188,7 @@ If you require this algorithm not for all your tables but only for one you could
 
 Because I insist to use declarative classes with their `__tablename__` dynamically specified by given parameter, after days of failing with other solutions and hours of studying SQLAlchemy internals, I come up with the following solution that I believe is simple, elegant and race-condition free.
 
-```
+```python
 def get_model(suffix):
     DynamicBase = declarative_base(class_registry=dict())
 
@@ -209,7 +209,7 @@ This declarative base already contains a class with the same class name and modu
 
 Hence, you will not be able to reference them from other models with string lookup. However, it works perfectly fine to use these on-the-fly declared models for foreign keys as well:
 
-```
+```python
 ParentModel1 = get_model(123)
 ParentModel2 = get_model(456)
 
@@ -229,7 +229,7 @@ If you only use them to query/insert/update/delete without any reference left su
 
 you can write a function with tablename parameter and send back the class with setting appropriate attributes.
 
-```
+```python
 def get_class(table_name):
 
    class GenericTable(Base):
@@ -245,14 +245,14 @@ def get_class(table_name):
 
 Then you can create a table using:
 
-```
+```python
 get_class("test").__table__.create(bind=engine)  # See sqlachemy.engine
 ```
 
 
 Try this
 
-```
+```python
 import zlib
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -293,7 +293,7 @@ print session.query(cls).get(100)
 
 Instead of using imperative creating Table object, you can use usual declarative_base and make a closure to set a table name as the following:
 
-```
+```python
 def make_class(Base, table_name):
     class User(Base):
         __tablename__ = table_name
@@ -323,7 +323,7 @@ because game servers must be very fast, we have decided to separate databases de
 
 so for example I did it successfully like the following.
 
-```
+```python
 from threading import Thread
 from sqlalchemy import Column, Integer, String, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base, DeferredReflection
@@ -342,7 +342,7 @@ and the next code will create multiple databases.
 
 There will be test1 ~ test10 databases.
 
-```
+```python
 for i in range(10):
     url = 'mysql://user@localhost/'
     engine = create_engine(url, encoding='UTF-8', pool_recycle=300)
@@ -357,7 +357,7 @@ the get_engine() function will give you an engine depending on the user ID.
 
 (User ID is integer)
 
-```
+```python
 engines = []
 for i in range(10):
     url = 'mysql://user@localhost/test%d'% i
@@ -376,7 +376,7 @@ def get_engine(user_id):
 
 by running prepare function, the BuddyModel class will be prepared, and mapped to the engine.
 
-```
+```python
 def prepare(user_id):
     engine = get_engine(user_id)
     DeferredBase.prepare(engine)
@@ -385,7 +385,7 @@ def prepare(user_id):
 
 ** The next code will do what I want to do exactly **
 
-```
+```python
 for user_id in range(100):
     prepare(user_id)
 
@@ -400,7 +400,7 @@ for user_id in range(100):
 
 But the problem is that when I do it in multiple threads, it just raise errors
 
-```
+```python
 class MetalMultidatabaseThread(Thread):
 
     def run(self):
@@ -427,7 +427,7 @@ for t in threads:
 
 the error message is ...
 
-```
+```python
 ArgumentError: Class '<class '__main__.BuddyModel'>' already has a primary mapper defined. Use non_primary=True to create a non primary Mapper.  clear_mappers() will remove *all* current mappers from all classes.
 ```
 
@@ -470,14 +470,14 @@ Here is the answer
 
 First do not use bind parameter.. simply make it empty.
 
-```
+```python
 Base = declarative_base()
 ```
 
 
 Declare Model..
 
-```
+```python
 class BuddyModel(Base):
     __tablename__ = 'test_x'
 
@@ -488,7 +488,7 @@ class BuddyModel(Base):
 
 When you want to do CRUD ,make a session
 
-```
+```python
 engine = get_engine_by_user_id(user_id)
 session = sessionmaker(bind=engine)()
 
@@ -518,7 +518,7 @@ I'm clearly doing something wrong, but I have no idea what it is. It looks like 
 
 **config.py**
 
-```
+```python
 SQLALCHEMY_DATABASE_URI = 'mysql://user@host/db1'
 SQLALCHEMY_BINDS = {
     'otherDB':        'mysql://user@host/db2',
@@ -528,7 +528,7 @@ SQLALCHEMY_BINDS = {
 
 **__init__.py**
 
-```
+```python
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.ext.automap import automap_base
@@ -545,7 +545,7 @@ db.Model.prepare(db.engine, reflect=True)
 
 **models.py**
 
-```
+```python
 class Table1(db.Model):
     __tablename__ = 'table1'
 
@@ -559,7 +559,7 @@ class Table2(db.Model):
 
 **__init__.py**
 
-```
+```python
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
