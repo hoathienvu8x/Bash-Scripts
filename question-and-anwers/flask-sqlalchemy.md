@@ -591,3 +591,59 @@ class Table2(db.Model):
     __tablename__ = 'table2'
     __bind_key__ = 'otherDB'
 ```
+
+# SQLAlchemy: Creating vs. Reusing a Session
+
+Just a quick question: SQLAlchemy [talks about](http://docs.sqlalchemy.org/en/rel_0_7/orm/session.html#session-frequently-asked-questions) calling `sessionmaker()` once but calling the resulting `Session()` class each time you need to talk to your DB. For me that means the second I would do my first `session.add(x)` or something similar, I would first do
+
+```py
+from project import Session
+session = Session()
+```
+
+What I did until now was to make the call `session = Session()` in my model *once* and then always import the same session anywhere in my application. Since this is a web-applications this would *usually* mean the same (as one view is executed).
+
+But where is the difference? What is the disadvantage of using one session all the time against using it for my database stuff until my function is done and then creating a new one the next time I want to talk to my DB?
+
+I get that if I use multiple threads, each one should get their own session. But using `scoped_session()`, I already make sure that problem doesn't exist, do I?
+
+Please clarify if any of my assumptions are wrong.
+
+`sessionmaker()` is a factory, it's there to encourage placing configuration options for creating new `Session` objects in just one place. It is optional, in that you could just as easily call `Session(bind=engine, expire_on_commit=False)` anytime you needed a new `Session`, except that its verbose and redundant, and I wanted to stop the proliferation of small-scale "helpers" that each approached the issue of this redundancy in some new and more confusing way.
+
+So `sessionmaker()` is just a tool to help you create `Session` objects when you need them.
+
+Next part. I think the question is, what's the difference between making a new `Session()` at various points versus just using one all the way through. The answer, not very much. `Session` is a container for all the objects you put into it, and then it also keeps track of an open transaction. At the moment you call `rollback()` or `commit()`, the transaction is over, and the `Session` has no connection to the database until it is called upon to emit SQL again. The links it holds to your mapped objects are weak referencing, provided the objects are clean of pending changes, so even in that regard the `Session` will empty itself out back to a brand new state when your application loses all references to mapped objects. If you leave it with its default `"expire_on_commit"` setting, then all the objects are expired after a commit. If that `Session` hangs around for five or twenty minutes, and all kinds of things have changed in the database the next time you use it, it will load all brand new state the next time you access those objects even though they've been sitting in memory for twenty minutes.
+
+In web applications, we usually say, hey why don't you make a brand new `Session` on each request, rather than using the same one over and over again. This practice ensures that the new request begins "clean". If some objects from the previous request haven't been garbage collected yet, and if maybe you've turned off `"expire_on_commit"`, maybe some state from the previous request is still hanging around, and that state might even be pretty old. If you're careful to leave `expire_on_commit` turned on and to definitely call `commit()` or `rollback()` at request end, then it's fine, but if you start with a brand new `Session`, then there's not even any question that you're starting clean. So the idea to start each request with a new `Session` is really just the simplest way to make sure you're starting fresh, and to make the usage of `expire_on_commit` pretty much optional, as this flag can incur a lot of extra SQL for an operation that calls `commit()` in the middle of a series of operations. Not sure if this answers your question.
+
+The next round is what you mention about threading. If your app is multithreaded, we recommend making sure the `Session` in use is local to...something. `scoped_session()` by default makes it local to the current thread. In a web app, local to the request is in fact even better. Flask-SQLAlchemy actually sends a custom "scope function" to `scoped_session()` so that you get a request-scoped session. The average Pyramid application sticks the Session into the "request" registry. When using schemes like these, the "create new Session on request start" idea continues to look like the most straightforward way to keep things straight.
+
+In addition to the excellent zzzeek's answer, here's a simple recipe to quickly create throwaway, self-enclosed sessions:
+
+```py
+from contextlib import contextmanager
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+
+@contextmanager
+def db_session(db_url):
+    """ Creates a context with an open SQLAlchemy session.
+    """
+    engine = create_engine(db_url, convert_unicode=True)
+    connection = engine.connect()
+    db_session = scoped_session(sessionmaker(autocommit=False, autoflush=True, bind=engine))
+    yield db_session
+    db_session.close()
+    connection.close()
+```
+
+Usage:
+
+```py
+from mymodels import Foo
+
+with db_session("sqlite://") as db:
+    foos = db.query(Foo).all()
+```
