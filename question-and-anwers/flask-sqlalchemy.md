@@ -647,3 +647,102 @@ from mymodels import Foo
 with db_session("sqlite://") as db:
     foos = db.query(Foo).all()
 ```
+
+# Construct a ShardedSession
+
+```python
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.horizontal_shard import ShardedSession
+from sqlalchemy.ext.declarative import declarative_base
+
+db0 = create_engine('sqlite://')
+db1 = create_engine('sqlite://')
+db2 = create_engine('sqlite://')
+
+base = declarative_base()
+class User(base):
+    __tablename__ = "users"
+    uid = Column(Integer, primary_key=True)
+    username = Column(String)
+    def __repr__(self):
+        return self.username
+
+User.__table__.create(db0)
+User.__table__.create(db1)
+User.__table__.create(db2)
+create_session = sessionmaker(class_=ShardedSession)
+create_session.configure(shards={
+    0:db0,
+    1:db1,
+    2:db2
+})
+
+#define sharding functions
+def shard_chooser(mapper, instance):
+    """given an instance of mapped class, return its shard"""
+    return instance.uid % 3
+
+def id_chooser(query, ident):
+    """return ordered list of shards to search based on identifier"""
+    return [0, 1, 2]
+
+def query_chooser(query):
+    """generate a list of shards to search based on a query"""
+    return [0, 1, 2]
+
+# configure create_session to use these functions
+create_session.configure(
+                    shard_chooser=shard_chooser,
+                    id_chooser=id_chooser,
+                    query_chooser=query_chooser
+                    )
+                    
+users = [User(uid=0, username="Anthony"), 
+    User(uid=1, username="Beth"),
+    User(uid=2, username="Calvin"), 
+    User(uid=3, username="Danielle"),
+    User(uid=4, username="Eric")]
+    
+sess = create_session()
+for u in users:
+    sess.add(u)
+sess.commit()
+sess.close()
+```
+
+```python
+session0 = sessionmaker(bind=db0)()
+q = session0.query(User)
+print q.all()
+```
+
+OUTPUT
+
+```
+[Anthony, Danielle]
+```
+
+```python
+session1 = sessionmaker(bind=db1)()
+q = session1.query(User)
+print q.all()
+```
+
+OUTPUT
+
+```
+[Beth, Eric]
+```
+
+```python
+session2 = sessionmaker(bind=db2)()
+q = session2.query(User)
+print q.all()
+```
+
+OUTPUT
+
+```
+[Calvin]
+```
