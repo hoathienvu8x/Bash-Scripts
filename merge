@@ -33,6 +33,8 @@ ffmpeg -nostats -loglevel 0 -i $video -i a.aac -c:v copy -c:a aac -strict experi
 rm -rf a.aac
 exit
 #
+# ffmpeg -i video.mp4 -i audio.m4a  -c:v copy -c:a copy -map 0:v:0 -map 1:a:0 -shortest merge.mp4
+#
 # ffmpeg -i input.mp4 -ss 00:00:00 -to 00:10:00 -c copy output1.mp4
 # ffmpeg -i input.mp4 -ss 00:10:00 -to 00:20:00 -c copy output2.mp4
 # 
