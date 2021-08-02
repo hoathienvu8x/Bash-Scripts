@@ -51,3 +51,25 @@ exit
 #
 # ffmpeg -i filein.m4a -ss 00:00:08 -to 00:04:04 -c copy filein-splited.m4a
 # ffmpeg -i filein-splited.m4a -f flac fileout.flac
+#
+# #!/bin/bash
+
+# input_name="BKuSL2Ikeg4"
+# 
+# rm -rf a1.mp4 a1.m4a
+# rm -rf a2.mp4 a2.m4a
+# rm -rf a12.mp4 a12.m4a
+# rm -rf croped.mp4 merge.mp4
+# 
+# ffmpeg -i $input_name.mp4 -ss 00:01:18 -to 00:02:25 -c copy a1.mp4
+# ffmpeg -i $input_name.m4a -ss 00:01:20 -to 00:02:25 -c copy a1.m4a
+# 
+# ffmpeg -i $input_name.mp4 -ss 01:16:22 -to 01:16:37 -c copy a2.mp4
+# ffmpeg -i $input_name.m4a -ss 01:16:28 -to 01:16:37 -c copy a2.m4a
+# 
+# ffmpeg -i a1.mp4 -i a2.mp4 -filter_complex "[0:v][1:v]concat=n=2:v=1[outv]" -map "[outv]" a12.mp4
+# ffmpeg -i a1.m4a -i a2.m4a -filter_complex "[0:0][1:0]concat=n=2:v=0:a=1[outa]" -map "[outa]" a12.m4a
+# 
+# ffmpeg -i a12.mp4 -filter:v "crop=956:650:0:0" croped.mp4
+# ffmpeg -i croped.mp4 -i a12.m4a  -c:v copy -c:a copy -map 0:v:0 -map 1:a:0 -shortest merge.mp4
+#
