@@ -1,0 +1,60 @@
+#!/bin/bash
+
+WORKDIR="$HOME/flask-api"
+
+mkdir -p $WORKDIR/src
+
+cd $WORKDIR
+
+cat > src/app.py <<EOF
+# -*- coding: utf-8 -*-
+
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/', methods=['GET','POST'])
+def welcome():
+  return 'Welcome to the Flask API'
+
+@app.route('/api/sayhi', methods=['GET','POST'])
+def flask_api():
+  if request.method == 'POST':
+    req = request.form
+  else:
+    req = request.args
+
+  name = req.get('name','').strip()
+  if not name:
+    return jsonify({
+      'error':'Sorry i can\'t hear from your.'
+    })
+
+  return jsonify({
+    'data':'Hi {}!'.format(name)
+  })
+EOF
+
+cat > requirements.txt <<EOF
+Flask
+EOF
+
+cat > Dockerfile <<EOF
+FROM python:3
+
+WORKDIR /restful
+
+COPY requirements.txt .
+
+RUN pip3 install -r requirements.txt
+
+COPY src/ .
+
+CMD ["python3", "./app.py"]
+EOF
+
+docker build -t flask-api .
+
+docker run -d -p 5000:5000 flask-api
+
+exit
