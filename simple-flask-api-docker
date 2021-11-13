@@ -33,6 +33,9 @@ def flask_api():
   return jsonify({
     'data':'Hi {}!'.format(name)
   })
+
+if __name__ == '__main__':
+  app.run()
 EOF
 
 cat > requirements.txt <<EOF
