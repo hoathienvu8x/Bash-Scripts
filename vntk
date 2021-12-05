@@ -2,11 +2,11 @@
 
 yum check-update
 
-yum install -y yum-utils device-mapper-persistent-data lvm2 nano
+yum install -y yum-utils device-mapper-persistent-data lvm2 nano git
 
 yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
-yum install docker
+yum install -y docker
 
 rm -f /etc/localtime
 ln -sf /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
