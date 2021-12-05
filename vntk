@@ -1,0 +1,59 @@
+#!/bin/bash
+
+yum check-update
+
+yum install -y yum-utils device-mapper-persistent-data lvm2 nano
+
+yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+yum install docker
+
+rm -f /etc/localtime
+ln -sf /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime
+
+if [ -s /etc/selinux/config ]; then
+    sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+    sed -i 's/SELINUX=permissive/SELINUX=disabled/g' /etc/selinux/config
+fi
+setenforce 0
+
+firewall-cmd --permanent --zone=public --add-service=http
+firewall-cmd --reload
+
+systemctl start docker
+
+echo "Install vntk"
+
+git clone https://github.com/vunb/vntk
+
+cd vntk
+
+cat > Dockerfile <<EOF
+FROM node:10-alpine
+
+RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
+
+WORKDIR /home/node/app
+
+COPY package*.json ./
+
+USER root
+
+RUN npm install
+
+COPY . .
+
+RUN chown -R node:node ./*
+
+CMD [ "npm" "run" "server" ]
+EOF
+
+cat > .dockerignore <<EOF
+node_modules
+npm-debug.log
+Dockerfile
+.dockerignore
+EOF
+
+docker build -t vn-docker/node:v1 .
+docker run --name vntk -p 80:3000 -d vn-docker/node:v1
