@@ -45,7 +45,7 @@ COPY . .
 
 RUN chown -R node:node ./*
 
-CMD [ "npm" "run" "server" ]
+CMD node server/app.js
 EOF
 
 cat > .dockerignore <<EOF
