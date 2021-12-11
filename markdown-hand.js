@@ -1,3 +1,7 @@
+/*
+.a > div:nth-child(4) > article:nth-child(3) > div:nth-child(3) > div:nth-child(1)
+div.db:nth-child(2)
+*/
 var d = document.createElement('div')
 d.id ='acc';
 document.body.appendChild(d)
