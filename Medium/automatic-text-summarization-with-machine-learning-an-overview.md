@@ -12,7 +12,7 @@ It is very challenging, because when we as humans summarize a piece of text, we 
 
 Various models based on machine learning have been proposed for this task. Most of these approaches model this problem as a classification problem which outputs whether to include a sentence in the summary or not. Other approaches have used topic information, Latent Semantic Analysis (LSA), Sequence to Sequence models, Reinforcement Learning and Adversarial processes.
 
-In general, there are two different approaches for automatic summarization: **extraction **and **abstraction**.
+In general, there are two different approaches for automatic summarization: **extraction** and **abstraction**.
 
 ## The extractive approach
 
