@@ -476,3 +476,5 @@ We’ve talked briefly about the difference between a graph database and a tradi
 We built a thin Apollo GraphQL Server layer to act as a gateway between our end user and Slash GraphQL in order to restrict what kinds of queries can go through. Finally, we put together a very basic web interface as a proof of concept for a GraphQL-powered blog.
 
 I’ve barely scratched the surface of what you can do with Slash GraphQL and a GraphQL database in this article, but I hope it inspires you to dive in and learn more.
+
+![](https://frankcongson.com/static/b3e44ef8b53a14e57a113de5a23d6d4b/7b4bd/forestry-dev-illustration.jpg)
