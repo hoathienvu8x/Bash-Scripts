@@ -41,6 +41,7 @@ var wordnet = {};
 for(var i = 0; i < tokens.length; i++) {
     if ("@`#$%&~|[]<>'(){}*+-=;,?.!:\"/".indexOf(tokens[i]) != -1) continue;
     if (/^[0-9]+$/.test(tokens[i]) == true) continue;
+    if (/^\d+\-\d+$/.test(tokens[i]) == true) continue;
     var token = tokens[i].toLowerCase();
     var hash = token.hashCode();
     wordnet[hash] = [token];
@@ -48,6 +49,7 @@ for(var i = 0; i < tokens.length; i++) {
 for(var i = 0; i < tokens.length; i++) {
     if ("@`#$%&~|[]<>'(){}*+-=;,?.!:\"/".indexOf(tokens[i]) != -1) continue;
     if (/^[0-9]+$/.test(tokens[i]) == true) continue;
+    if (/^\d+\-\d+$/.test(tokens[i]) == true) continue;
     var token = tokens[i].toLowerCase();
     var j = i + 1;
     if (j < tokens.length) {
@@ -55,6 +57,7 @@ for(var i = 0; i < tokens.length; i++) {
         var word = tokens[j].toLowerCase();
         if ("@`#$%&~|[]<>'(){}*+-=;,?.!:\"/".indexOf(word) != -1) continue;
         if (/^[0-9]+$/.test(word) == true) continue;
+        if (/^\d+\-\d+$/.test(word) == true) continue;
         if (wordnet[hash].includes(word) == false) {
             wordnet[hash].push(word);
         }
