@@ -1,3 +1,13 @@
+String.prototype.hashCode = function() {
+    var hash = 0, i, chr;
+    if (this.length === 0) return hash;
+    for (i = 0; i < this.length; i++) {
+        chr = this.charCodeAt(i);
+        hash = ((hash << 5) - hash) + chr;
+        hash |= 0;
+    }
+    return hash;
+};
 var str = []
 var s = document.querySelector('h1').textContent.trim();
 if (s.length > 0) {
@@ -26,4 +36,27 @@ var sentences = doc.replace(/("[^"]*")/g,function(a, b) {
     v = v.trim();
     if (v[v.length - 1] == '!' || v[v.length - 1] == '?') return v.replace(/\[\.{3}\]/g,'...').replace(/\[([\.\?!])\]/g,'$1');
     return (v + '.').replace(/\[\.{3}\]/g,'...').replace(/\[([\.\?!])\]/g,'$1');
-}).filter(function(v) { return v.length > 1; })
+}).filter(function(v) { return v.length > 1; });
+var wordnet = {};
+for(var i = 0; i < tokens.length; i++) {
+    if ("@`#$%&~|[]<>'(){}*+-=;,?.!:\"/".indexOf(tokens[i]) != -1) continue;
+    if (/^[0-9]+$/.test(tokens[i]) == true) continue;
+    var token = tokens[i].toLowerCase();
+    var hash = token.hashCode();
+    wordnet[hash] = [token];
+}
+for(var i = 0; i < tokens.length; i++) {
+    if ("@`#$%&~|[]<>'(){}*+-=;,?.!:\"/".indexOf(tokens[i]) != -1) continue;
+    if (/^[0-9]+$/.test(tokens[i]) == true) continue;
+    var token = tokens[i].toLowerCase();
+    var j = i + 1;
+    if (j < tokens.length) {
+        var hash = token.hashCode();
+        var word = tokens[j].toLowerCase();
+        if ("@`#$%&~|[]<>'(){}*+-=;,?.!:\"/".indexOf(word) != -1) continue;
+        if (/^[0-9]+$/.test(word) == true) continue;
+        if (wordnet[hash].includes(word) == false) {
+            wordnet[hash].push(word);
+        }
+    }
+}
