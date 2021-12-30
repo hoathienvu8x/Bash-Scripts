@@ -20,8 +20,10 @@ for(var i = 0; i < dom.childNodes.length; i++) {
 }
 var doc = str.join(' ').replace(/([\.,;:\/\(\)\[\]"'])/g,' $1 ').replace(/\s+/g,' ').replace(/ \. \. \. /g,' [...] ').trim()
 var tokens = doc.split(/\s+/).map(function(v) { return v.trim(); }).filter(function(v) { return v.length > 0; })
-var sentences = doc.replace(/([\?!])/g,'$1.').split(/\.\s+/).map(function(v) {
+var sentences = doc.replace(/("[^"]*")/g,function(a, b) {
+    return b.replace(/([\.\?!])/g,'[$1]');
+}).replace(/([\?!])/g,'$1.').split(/\.\s+/).map(function(v) {
     v = v.trim();
-    if (v[v.length - 1] == '!' || v[v.length - 1] == '?') return v.replace(/\[\.{3}\]/g,'...');
-    return (v + '.').replace(/\[\.{3}\]/g,'...');
+    if (v[v.length - 1] == '!' || v[v.length - 1] == '?') return v.replace(/\[\.{3}\]/g,'...').replace(/\[([\.\?!])\]/g,'$1');
+    return (v + '.').replace(/\[\.{3}\]/g,'...').replace(/\[([\.\?!])\]/g,'$1');
 }).filter(function(v) { return v.length > 1; })
