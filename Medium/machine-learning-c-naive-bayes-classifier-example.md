@@ -1,10 +1,12 @@
 # [Machine Learning: C++ Naive Bayes Classifier Example](https://medium.com/@dr.sunhongyu/machine-learning-c-naive-bayes-classifier-example-dbe7b88a999b)
 
-Naive Bayes classifier is an important basic model frequently asked in Machine Learning engineer interview.
+Naive Bayes classifier is an important basic model frequently asked in
+Machine Learning engineer interview.
 
 What does Naive Bayes do?
 
-Given a dataset with Classes (Labels) C and their Features/Attributes x, create a model that can predict the Label Class C with a set of Attributes x.
+Given a dataset with Classes (Labels) C and their Features/Attributes x,
+create a model that can predict the Label Class C with a set of Attributes x.
 
 ![](https://miro.medium.com/max/948/1*OleMEzkI3QZJ68oXKLCGNA.jpeg)
 
@@ -12,11 +14,13 @@ Given a dataset with Classes (Labels) C and their Features/Attributes x, create 
 
 Why called Naive?
 
-All features are assumed to be independent when predicting the label, which is over-simplified assumption. In reality, this might be never true.
+All features are assumed to be independent when predicting the label,
+which is over-simplified assumption. In reality, this might be never true.
 
 How to train this model?
 
-- Basically it is a statistics aggregation process for counting all training entries per class label and per attribute.
+- Basically it is a statistics aggregation process for counting all training
+entries per class label and per attribute.
 - Calculate P(C) and P(x|C)
 
 How to inference this model?
@@ -32,16 +36,20 @@ P(C|x) for all C labels.
 ## Advantages
 
 - Naive Bayes Algorithm is a fast, highly scalable algorithm.
-- Naive Bayes can be use for Binary and Multiclass classification. It provides different types of Naive Bayes Algorithms like GaussianNB, MultinomialNB, BernoulliNB.
+- Naive Bayes can be use for Binary and Multiclass classification. It provides
+different types of Naive Bayes Algorithms like GaussianNB, MultinomialNB, BernoulliNB.
 - It is a simple algorithm that depends on doing a bunch of counts.
-- Great choice for Text Classification problems. It’s a popular choice for spam email classification.
+- Great choice for Text Classification problems. It’s a popular choice for spam
+email classification.
 - It can be easily train on small dataset
 
 ## Disadvantages
 
-It considers all the features to be unrelated, so it cannot learn the relationship between features.
+It considers all the features to be unrelated, so it cannot learn the relationship
+between features.
 
-This example implementation is in C++. The model contains only 70 lines of code, and meant to use for study purpose or white-board coding.
+This example implementation is in C++. The model contains only 70 lines of code,
+and meant to use for study purpose or white-board coding.
 
 ```c++
 class NaiveBayesClassifer {
@@ -101,7 +109,8 @@ class NaiveBayesClassifer {
             return maxcid;
         }
 };
-void populateData(vector<vector<int>> &data, unordered_map<string, int> &classmap, unordered_map<string, int> &attrimap, string c, string a1, string a2, int K) {
+void populateData(vector<vector<int>> &data, unordered_map<string, int> &classmap,
+        unordered_map<string, int> &attrimap, string c, string a1, string a2, int K) {
     vector<int> apair = {classmap[c],attrimap[a1], attrimap[a2]};
     vector<vector<int>> newarr(K, apair);
     data.insert(data.end(), newarr.begin(), newarr.end());
