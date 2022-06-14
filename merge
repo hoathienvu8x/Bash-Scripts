@@ -48,7 +48,8 @@ exit
 # * -to end time in seconds or in hh:mm:ss
 # * -c codec to use
 # */
-#
+# https://stackoverflow.com/a/63235481
+# ffmpeg -i out.mp4 -filter_complex "[0:v]setpts=0.94*PTS[v];[0:a]atempo=1.06,asetrate=44100*1.25,aformat=sample_rates=44100[a]" -map "[v]" -map "[a]" out1.mp4
 # ffmpeg -i input.mp4 -lavfi '[0:v]scale=ih*16/9:-1,boxblur=luma_radius=min(h\,w)/20:luma_power=1:chroma_radius=min(cw\,ch)/20:chroma_power=1[bg];[bg][0:v]overlay=(W-w)/2:(H-h)/2,crop=h=iw*9/16' -vb 800K output.webm
 # ffmpeg -i filein.m4a -ss 00:00:08 -to 00:04:04 -c copy filein-splited.m4a
 # ffmpeg -i filein-splited.m4a -f flac fileout.flac
