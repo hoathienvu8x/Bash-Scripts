@@ -1,5 +1,5 @@
 for (int i = 1; i < argc; i++) {
-
+    // https://stackoverflow.com/a/6949786
     if (strcmp(argv[i],"-i")==0) {
         filename = argv[i+1];
         printf("filename: %s",filename);
