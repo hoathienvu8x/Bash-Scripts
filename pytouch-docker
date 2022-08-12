@@ -1,0 +1,30 @@
+FROM alpine:3.7
+
+RUN echo "|--> Updating"
+RUN apk update && apk upgrade
+RUN echo "|--> Install basics pre-requisites"
+RUN apk add --no-cache curl ca-certificates python3
+RUN echo "|--> Install Python basics"
+RUN python3 -m ensurepip
+RUN rm -r /usr/lib/python*/ensurepip
+RUN pip3 --no-cache-dir install --upgrade pip setuptools wheel
+RUN if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip; fi
+RUN if [[ ! -e /usr/bin/python ]]; then ln -sf /usr/bin/python3 /usr/bin/python; fi
+RUN ln -s locale.h /usr/include/xlocale.h
+RUN echo "|--> Install build dependencies"
+RUN apk add --no-cache --virtual=.build-deps build-base linux-headers python3-dev git cmake jpeg-dev bash libffi-dev gfortran freetype-dev
+RUN echo "|--> Install Python packages"
+RUN pip install -U --no-cache-dir numpy pandas
+RUN echo "|--> Install PyTorch"
+RUN git clone --recursive https://github.com/pytorch/pytorch
+RUN cd pytorch && python setup.py install
+RUN echo "|--> Install Torch Vision"
+RUN git clone --recursive https://github.com/pytorch/vision
+RUN cd vision && python setup.py install
+RUN echo "|--> Cleaning"
+RUN rm -rf /pytorch
+RUN rm -rf /root/.cache
+RUN rm -rf /var/cache/apk/*
+RUN apk del .build-deps
+RUN find /usr/lib/python3.6 -name __pycache__ | xargs rm -r
+RUN rm -rf /root/.[acpw]*
