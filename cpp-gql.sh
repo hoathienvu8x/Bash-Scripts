@@ -17,9 +17,11 @@ wget -q https://raw.githubusercontent.com/DavidUser/GraphQL-Cpp/master/custumer.
 
 cat > /tmp/NLDatabase.patch <<EOF
 --- NLDatabase.h	2022-10-18 15:53:06.655824326 +0700
-+++ NLDatabase.h	2022-10-18 16:08:43.795236638 +0700
-@@ -3,26 +3,31 @@
- 
++++ NLDatabase.h	2022-10-18 16:55:27.344113361 +0700
+@@ -1,16 +1,19 @@
+-#pragma once
+-
+-
  #include <string>
  #include <sstream>
 +#include <cstring>
@@ -40,12 +42,14 @@ cat > /tmp/NLDatabase.patch <<EOF
  
  class Query {
  protected:
-     sqlite3_stmt *stmt;
+@@ -18,11 +21,14 @@
      bool finalize;
  public:
--    Query( sqlite3_stmt *stmt, bool finalize = true ) : stmt( stmt ), finalize( finalize ) {
--    }
-+    Query( sqlite3_stmt *stmt, bool finalize = true ) : stmt( stmt ), finalize( finalize ) { }
+     Query( sqlite3_stmt *stmt, bool finalize = true ) : stmt( stmt ), finalize( finalize ) {
++        if ( ! stmt ) {
++            throw std::exception();
++        }
+     }
      
 -    virtual ~Query() {
 +    virtual ~Query( ) {
@@ -55,7 +59,7 @@ cat > /tmp/NLDatabase.patch <<EOF
          }
      }
      
-@@ -35,8 +40,7 @@
+@@ -35,8 +41,7 @@
      void *data;
      int length;
      
@@ -65,61 +69,79 @@ cat > /tmp/NLDatabase.patch <<EOF
  };
  
  
-@@ -59,23 +63,34 @@
+@@ -59,23 +64,47 @@
  private:
      sqlite3_stmt* stmt;
  public:
 -    Row( sqlite3_stmt *stmt ) : stmt( stmt ) {
--    }
 +    Row( sqlite3_stmt *stmt ) : stmt( stmt ) { }
++    
++    std::string getName( int index ) const {
++        if ( stmt ) {
++            return std::string ( sqlite3_column_name( stmt, index ) );
++        }
++        throw std::exception();
+     }
      
-     std::string column_string( int index ) const {
+-    std::string column_string( int index ) const {
 -        return std::string( (char*)sqlite3_column_text( stmt, index ), sqlite3_column_bytes( stmt, index ) );
++    std::string getText( int index ) const {
 +        if ( stmt ) {
 +            return std::string( (char*)sqlite3_column_text( stmt, index ), sqlite3_column_bytes( stmt, index ) );
 +        }
-+        return std::string();
++        throw std::exception();
      }
      
-     int column_int( int index ) const {
+-    int column_int( int index ) const {
 -        return sqlite3_column_int( stmt, index );
++    int getInt( int index ) const {
 +        if ( stmt ) {
 +            return sqlite3_column_int( stmt, index );
 +        }
-+        return -1;
++        throw std::exception();
      }
      
-     double column_double( int index ) const {
+-    double column_double( int index ) const {
 -        return sqlite3_column_double( stmt, index );
++    double getDouble( int index ) const {
 +        if ( stmt ) {
 +            return sqlite3_column_double( stmt, index );
 +        }
-+        return 0;
++        throw std::exception();
      }
      
-     TransientBlob column_blob( int index ) const {
+-    TransientBlob column_blob( int index ) const {
 -        return TransientBlob( sqlite3_column_blob( stmt, index ), sqlite3_column_bytes( stmt, index ) );
++    TransientBlob getBlob( int index ) const {
 +        if ( stmt ) {
 +            return TransientBlob( sqlite3_column_blob( stmt, index ), sqlite3_column_bytes( stmt, index ) );
 +        }
-+        return TransientBlob( (char*)nullptr, 0 );
++        throw std::exception();
++    }
++    bool operator ! () const {
++        if ( stmt ) {
++            return sqlite3_column_count( stmt ) > 0;
++        }
++        throw std::exception();
      }
  };
  
-@@ -83,7 +98,11 @@
+@@ -83,8 +112,12 @@
  class Cursor {
  public:
      Cursor( sqlite3_stmt *stmt, int pos ) : stmt( stmt ), row( stmt ), pos( pos ) {
 -        if ( pos != -1 && sqlite3_step( stmt ) != SQLITE_ROW ) {
+-            pos = -1;
 +        if( stmt ) {
 +            if ( pos != -1 && sqlite3_step( stmt ) != SQLITE_ROW ) {
 +                pos = -1;
 +            }
 +        } else {
-             pos = -1;
++            throw std::exception();
          }
      }
-@@ -97,10 +116,17 @@
+     
+@@ -97,10 +130,17 @@
      }
      
      const Cursor & operator++ () {
@@ -140,7 +162,7 @@ cat > /tmp/NLDatabase.patch <<EOF
          }
          return *this;
      }
-@@ -114,15 +140,12 @@
+@@ -114,15 +154,12 @@
  
  class Results : public Query {
  public:
@@ -158,7 +180,7 @@ cat > /tmp/NLDatabase.patch <<EOF
      Cursor end() const {
          return Cursor( stmt, -1 );
      }
-@@ -133,44 +156,56 @@
+@@ -133,47 +170,107 @@
  private:
      sqlite3 *db;
  public:
@@ -171,6 +193,7 @@ cat > /tmp/NLDatabase.patch <<EOF
 +        if ( rc ) {
 +            sqlite3_close( db );
 +            db = nullptr;
++            throw std::exception();
 +        }
      }
 -    
@@ -184,9 +207,9 @@ cat > /tmp/NLDatabase.patch <<EOF
      }
      
      Query prepare( const std::string & query ) {
++        if ( db == nullptr ) throw std::exception();
          sqlite3_stmt *stmt = 0;
 -        sqlite3_prepare_v2( db, query.c_str(), (int)query.length(), &stmt, 0 );
-+        if ( db == nullptr ) return Query( stmt );
 +        verify( sqlite3_prepare_v2( db, query.c_str(), (int)query.length(), &stmt, 0 ) );
          return Query( stmt );
      }
@@ -210,23 +233,73 @@ cat > /tmp/NLDatabase.patch <<EOF
      }
      
      Results query( const std::string & query ) {
++        if ( db == nullptr ) throw std::exception();
          sqlite3_stmt *stmt = 0;
 -        sqlite3_prepare_v2( db, query.c_str(), (int)query.length(), &stmt, 0 );
-+        if ( db == nullptr ) return Results( stmt, true );
 +        verify( sqlite3_prepare_v2( db, query.c_str(), (int)query.length(), &stmt, 0 ) );
          return Results( stmt, true );
      }
      
      template <typename T, typename... Args>
      Results query( const std::string & query, T t, Args... args ) {
++        if ( db == nullptr ) throw std::exception();
          sqlite3_stmt *stmt = 0;
 -        sqlite3_prepare_v2( db, query.c_str(), (int)query.length(), &stmt, 0 );
-+        if ( db == nullptr ) return Results( stmt, true );
 +        verify( sqlite3_prepare_v2( db, query.c_str(), (int)query.length(), &stmt, 0 ) );
          set( stmt, 1, t, args... );
          return Results( stmt, true );
      }
-@@ -181,7 +216,7 @@
++
++    Row querySingle( Query & qry ) {
++        Results result = query( qry );
++        auto iter = result.begin();
++        return *iter;
++    }
++    
++    template <typename T, typename... Args>
++    Row querySingle( Query & qry, T t, Args... args ) {
++        Results result = query( qry, args... );
++        auto iter = result.begin();
++        return *iter;
++    }
++    
++    Row querySingle( const std::string & qry ) {
++        Results result = query( qry );
++        auto iter = result.begin();
++        return *iter;
++    }
++    
++    template <typename T, typename... Args>
++    Row querySingle( const std::string & qry, T t, Args... args ) {
++        Results result = query( qry, args... );
++        auto iter = result.begin();
++        return *iter;
++    }
++
++    int changes ( ) const {
++        if ( db == nullptr ) throw std::exception();
++        return sqlite3_changes ( db );
++    }
++    int lastInsertRowID ( ) const {
++        if ( db == nullptr ) throw std::exception();
++        return static_cast<int>( sqlite3_last_insert_rowid ( db ) );
++    }
++    int lastErrorCode ( ) const {
++        if ( db == nullptr ) throw std::exception();
++        return sqlite3_errcode( db );
++    }
++    std::string lastErrorMsg ( ) const {
++        if ( db == nullptr ) throw std::exception();
++        return std::string ( sqlite3_errmsg ( db ) );
++    }
++    void busyTimeout( int ms ) {
++        if ( db == nullptr ) throw std::exception();
++        verify( sqlite3_busy_timeout( db, ms ) );
++    }
+         
+ private:
+     template <typename T>
+@@ -181,7 +278,7 @@
          std::ostringstream stream;
          stream << value;
          std::string text( stream.str() );
@@ -235,7 +308,7 @@ cat > /tmp/NLDatabase.patch <<EOF
      }
      
      template<typename T, typename... Args>
-@@ -196,42 +231,42 @@
+@@ -196,42 +293,42 @@
  
  template <>
  void Database::set(sqlite3_stmt *stmt, int index, int value) {
@@ -286,6 +359,7 @@ cat > /tmp/NLDatabase.patch <<EOF
  }
  
  
+
 EOF
 
 patch NLDatabase.h < /tmp/NLDatabase.patch
