@@ -1,4 +1,5 @@
 // Reduce array of objects to an object in JavaScript
+// https://www.amitmerchant.com/reduce-array-of-objects-to-an-object-in-javascript
 /**
  * The other day when working with one of the applications, I needed to convert/reduce
  * an array of objects to an object.
