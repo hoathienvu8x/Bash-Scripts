@@ -57,6 +57,7 @@ exit
 #
 # #!/bin/bash
 # ffmpeg -i in.m3u8 -acodec copy -vcodec copy out.mp4 (https://stackoverflow.com/a/33111765)
+# ffmpeg -protocol_whitelist file,http,https,tcp,tls,crypto -i in.m3u8 -acodec copy -vcodec copy out.mp4 (https://stackoverflow.com/a/50455696)
 # input_name="BKuSL2Ikeg4"
 # 
 # rm -rf a1.mp4 a1.m4a
