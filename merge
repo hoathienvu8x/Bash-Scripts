@@ -39,6 +39,7 @@ exit
 # ffmpeg -i input.mp4 -ss 00:10:00 -to 00:20:00 -c copy output2.mp4
 # 
 # ffmpeg -loop 1 -i image.jpg -i audio.wav -c:v libx264 -tune stillimage -c:a aac -b:a 192k -pix_fmt yuv420p -shortest out.mp4
+# > ffmpeg -loop 1 -i image.jpg -i audio.wav -c:v libx264 -tune stillimage -c:a aac -b:a 192k -shortest out.mp4
 # ffmpeg -loop 1 -y -i image8.jpg -i sound11.amr -shortest -acodec copy -vcodec mjpeg result.avi
 # https://askubuntu.com/a/868831
 # ffmpeg -loop 1 -i image8.jpg -i Mr_Perfect.mp3 -vf "scale='min(410,iw)':-2,format=yuv420p" -c:v libx264 -preset medium -profile:v main -c:a aac -shortest -movflags +faststart output.mp4
