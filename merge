@@ -78,3 +78,30 @@ exit
 # ffmpeg -i a12.mp4 -filter:v "crop=956:650:0:0" croped.mp4
 # ffmpeg -i croped.mp4 -i a12.m4a  -c:v copy -c:a copy -map 0:v:0 -map 1:a:0 -shortest merge.mp4
 #
+
+n=50
+
+# Download ts files
+base="https://some.base.url/"
+for ((i=0; i<=n; i++))
+do
+  file="file$i.png"
+  url=$base$file
+  echo $url
+  curl "$url" --output "file$i.png"
+done
+
+# Remove first 8 bytes (fake png header)
+for ((i=0; i<=n; i++))
+do
+  dd if=file$i.png of=file$i.ts bs=1 skip=8
+done
+
+# Make list file
+for ((i=0; i<=n; i++))
+do
+    echo "file 'file$i.ts'" >> list.txt
+done
+
+# Concat using ffmpeg
+ffmpeg -f concat -safe 0 -i list.txt -c copy output.mp4
