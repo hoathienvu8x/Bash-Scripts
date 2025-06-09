@@ -28,3 +28,23 @@ rm -rf /tmp/*.ts /tmp/*.ts.1
 
 echo "Done "
 exit
+
+#!/bin/bash
+# Download video fetch as png
+#if [ ! -f "/tmp/index.m3u8" ]
+#then
+#  echo "NO file"
+#  exit
+#fi
+
+#for u in `cat /tmp/index.m3u8 | grep 'https'`
+#do
+#  n=$(basename $u)
+#  echo "Download $n ..."
+#  wget -q --inet4-only "$u" -O "$n"
+#  echo "Build ${n}.ts"
+#  dd if="$n" of="${n}.ts" bs=1 skip=8
+#  rm -rf "$n"
+#  echo -ne "file '${n}.ts'\n" >> list.txt
+#done
+#ffmpeg -f concat -safe 0 -i list.txt -c copy output.mp4
