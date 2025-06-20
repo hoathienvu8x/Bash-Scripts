@@ -13,6 +13,7 @@ if __name__ == '__main__':
   ft = open('list.txt','w')
   lines = text.split('\n')
   i = 1
+  # curl -s --ipv4 <url> | dd bs=1 skip=8
   for line in lines:
     if 'https://' in line:
       name = 'seg-%d' % i
